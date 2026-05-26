@@ -1,0 +1,482 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pg_trgm, pgcrypto, vector]
+}
+
+model apartments {
+  id                       String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id                String               @db.Uuid
+  idobooking_id            String?
+  building_code            String
+  name                     String
+  address                  String?
+  floor                    Int?
+  entrance_code            String?
+  access_method            String?
+  smartlock_provider       String?
+  static_access_code       String?
+  wifi_ssid                String?
+  wifi_password            String?
+  wifi_password_changed_at DateTime?            @db.Timestamptz(6)
+  parking_available        Boolean?             @default(false)
+  parking_price_per_day    Decimal?             @db.Decimal(8, 2)
+  parking_info             String?
+  max_guests               Int?
+  size_m2                  Decimal?             @db.Decimal(6, 2)
+  amenities                Json?                @default("{}")
+  checkout_instructions    String?
+  photos                   Json?                @default("[]")
+  notes                    String?
+  created_at               DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime             @default(now()) @db.Timestamptz(6)
+  idobooking_tenant        String?
+  clients                  clients              @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conversations            conversations[]
+  locks_cache              locks_cache[]
+  reservations_cache       reservations_cache[]
+  rules                    rules[]
+
+  @@unique([client_id, idobooking_tenant, idobooking_id], map: "uq_apartments_per_tenant", where: raw("(idobooking_id IS NOT NULL)"))
+  @@index([client_id, building_code], map: "idx_apartments_building")
+  @@index([client_id], map: "idx_apartments_client")
+  @@index([client_id, idobooking_id], map: "idx_apartments_idobooking")
+}
+
+model audit_log {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id   String?  @db.Uuid
+  actor       String
+  action      String
+  target_type String?
+  target_id   String?
+  payload     Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  clients     clients? @relation(fields: [client_id], references: [id], onUpdate: NoAction)
+
+  @@index([client_id, action, created_at(sort: Desc)], map: "idx_audit_client_action_time")
+}
+
+model clients {
+  id                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                      String
+  slug                      String                   @unique
+  plan                      String                   @default("mvp")
+  vertical                  String?                  @default("rental")
+  config                    Json?
+  enabled_channels          Json?
+  idobooking_tenant         String?
+  idobooking_login          String?
+  idobooking_api_key_enc    String?
+  elevenlabs_agent_id       String?
+  bot_name                  String?                  @default("Asystent")
+  bot_persona               String?
+  primary_language          String                   @default("pl")
+  escalation_phone_office   String?
+  escalation_phone_security String?
+  escalation_email          String?
+  office_hours              Json?
+  created_at                DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                 @default(now()) @db.Timestamptz(6)
+  apartments                apartments[]
+  audit_log                 audit_log[]
+  conversations             conversations[]
+  escalation_recipients     escalation_recipients[]
+  escalations               escalations[]
+  faq                       faq[]
+  idobooking_credentials    idobooking_credentials[]
+  local_info                local_info[]
+  locks_cache               locks_cache[]
+  products                  products[]
+  orders_cache              orders_cache[]
+  order_status_map          order_status_map[]
+  reservations_cache        reservations_cache[]
+  rules                     rules[]
+}
+
+model conversations {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id       String        @db.Uuid
+  channel         String
+  thread_id       String
+  guest_phone     String?
+  guest_email     String?
+  guest_name      String?
+  reservation_id  String?
+  apartment_id    String?       @db.Uuid
+  language        String?       @default("pl")
+  status          String        @default("open")
+  last_message_at DateTime      @default(now()) @db.Timestamptz(6)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  closed_at       DateTime?     @db.Timestamptz(6)
+  apartments      apartments?   @relation(fields: [apartment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clients         clients       @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  escalations     escalations[]
+  messages        messages[]
+
+  @@unique([client_id, channel, thread_id])
+  @@index([client_id, status], map: "idx_conversations_client_status")
+  @@index([client_id, guest_phone], map: "idx_conversations_phone", where: raw("(guest_phone IS NOT NULL)"))
+  @@index([reservation_id], map: "idx_conversations_reservation", where: raw("(reservation_id IS NOT NULL)"))
+}
+
+model escalations {
+  id                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id                String         @db.Uuid
+  conversation_id          String?        @db.Uuid
+  reason                   String
+  severity                 String         @default("normal")
+  escalated_to             String?
+  notified_at              DateTime?      @db.Timestamptz(6)
+  resolved_at              DateTime?      @db.Timestamptz(6)
+  resolved_by              String?
+  resolution_note          String?
+  new_faq_suggested        Boolean?       @default(false)
+  new_faq_id               String?        @db.Uuid
+  sms_sent_to              Json?          @default("[]")
+  summary                  String?
+  client_phone             String?
+  client_email             String?
+  preferred_callback       String?
+  conversation_external_id String?
+  status                   String?        @default("open")
+  created_at               DateTime       @default(now()) @db.Timestamptz(6)
+  clients                  clients        @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conversations            conversations? @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  faq                      faq?           @relation(fields: [new_faq_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([client_id], map: "idx_escalations_client_unresolved", where: raw("(resolved_at IS NULL)"))
+}
+
+model faq {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id           String                 @db.Uuid
+  scope               String                 @default("both")
+  category            String
+  question            String
+  question_variants   String[]               @default([])
+  answer              String
+  answer_voice        String?
+  language            String                 @default("pl")
+  embedding           Unsupported("vector")?
+  source_doc          String?
+  source_question_num Int?
+  hit_count           BigInt?                @default(0)
+  last_hit_at         DateTime?              @db.Timestamptz(6)
+  is_active           Boolean?               @default(true)
+  created_at          DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime               @default(now()) @db.Timestamptz(6)
+  parent_id           String?                @db.Uuid
+  manually_edited     Boolean                @default(false)
+  auto_translated_at  DateTime?              @db.Timestamptz(6)
+  escalations         escalations[]
+  clients             clients                @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  faq                 faq?                   @relation("faqTofaq", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_faq           faq[]                  @relation("faqTofaq")
+
+  @@index([client_id, category], map: "idx_faq_category")
+  @@index([client_id, scope, language], map: "idx_faq_client_scope_lang", where: raw("(is_active = true)"))
+  @@index([embedding], map: "idx_faq_embedding")
+  @@index([client_id, scope, language], map: "idx_faq_masters", where: raw("((parent_id IS NULL) AND (is_active = true))"))
+  @@index([parent_id, language], map: "idx_faq_translations", where: raw("(parent_id IS NOT NULL)"))
+}
+
+model local_info {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id             String                 @db.Uuid
+  building_code         String
+  category              String
+  name                  String
+  content               String
+  distance_minutes_walk Int?
+  distance_minutes_car  Int?
+  language              String                 @default("pl")
+  embedding             Unsupported("vector")?
+  is_active             Boolean?               @default(true)
+  created_at            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime               @default(now()) @db.Timestamptz(6)
+  clients               clients                @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id, building_code, language], map: "idx_local_info_client_building", where: raw("(is_active = true)"))
+  @@index([embedding], map: "idx_local_info_embedding")
+}
+
+model locks_cache {
+  client_id      String      @db.Uuid
+  reservation_id String
+  code           String
+  valid_from     DateTime?   @db.Timestamptz(6)
+  valid_to       DateTime?   @db.Timestamptz(6)
+  apartment_id   String?     @db.Uuid
+  fetched_at     DateTime    @default(now()) @db.Timestamptz(6)
+  apartments     apartments? @relation(fields: [apartment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clients        clients     @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([client_id, reservation_id])
+}
+
+model messages {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id        String        @db.Uuid
+  role                   String
+  content                String
+  tool_calls             Json?
+  model_used             String?
+  latency_ms             Int?
+  tokens_in              Int?
+  tokens_out             Int?
+  cost_usd               Decimal?      @db.Decimal(10, 6)
+  booking_filtered       Boolean?      @default(false)
+  raw_content_pre_filter String?
+  created_at             DateTime      @default(now()) @db.Timestamptz(6)
+  conversations          conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversation_id, created_at], map: "idx_messages_conversation")
+  @@index([conversation_id, role], map: "idx_messages_role")
+}
+
+model reservations_cache {
+  client_id            String      @db.Uuid
+  reservation_id       String
+  apartment_id         String?     @db.Uuid
+  idobooking_object_id String?
+  guest_name           String?
+  guest_phone          String?
+  guest_email          String?
+  guest_country        String?
+  guest_count          Int?
+  check_in             DateTime?   @db.Date
+  check_out            DateTime?   @db.Date
+  nights               Int?
+  source               String?
+  status               String?
+  total_amount         Decimal?    @db.Decimal(10, 2)
+  paid_amount          Decimal?    @db.Decimal(10, 2)
+  currency             String?     @default("PLN")
+  raw_data             Json?
+  fetched_at           DateTime    @default(now()) @db.Timestamptz(6)
+  fetched_via          String?
+  idobooking_tenant    String
+  apartments           apartments? @relation(fields: [apartment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clients              clients     @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([client_id, idobooking_tenant, reservation_id])
+  @@index([client_id, status], map: "idx_reservations_client_status")
+  @@index([client_id, check_in, check_out], map: "idx_reservations_dates")
+  @@index([guest_email], map: "idx_reservations_email", where: raw("(guest_email IS NOT NULL)"))
+  @@index([guest_phone], map: "idx_reservations_phone", where: raw("(guest_phone IS NOT NULL)"))
+  @@index([client_id, guest_phone, idobooking_tenant], map: "idx_reservations_phone_tenant", where: raw("(guest_phone IS NOT NULL)"))
+}
+
+model rules {
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id     String                 @db.Uuid
+  apartment_id  String?                @db.Uuid
+  scope         String                 @default("both")
+  category      String
+  content       String
+  content_voice String?
+  language      String                 @default("pl")
+  embedding     Unsupported("vector")?
+  source_doc    String?
+  is_active     Boolean?               @default(true)
+  created_at    DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime               @default(now()) @db.Timestamptz(6)
+  apartments    apartments?            @relation(fields: [apartment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  clients       clients                @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id, scope, language], map: "idx_rules_client_scope_lang", where: raw("(is_active = true)"))
+  @@index([embedding], map: "idx_rules_embedding")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(VIEWER)
+  isActive     Boolean  @default(true)
+  clientId     String?  @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model idobooking_credentials {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id     String    @db.Uuid
+  scope         String
+  tenant        String
+  system_login  String
+  api_password  String
+  api_version   Int       @default(35)
+  api_lang      String    @default("pol")
+  is_active     Boolean   @default(true)
+  last_sync_at  DateTime? @db.Timestamptz(6)
+  last_error    String?
+  last_error_at DateTime? @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+  clients       clients   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([client_id, scope])
+  @@index([client_id], map: "idx_idobooking_creds_client_active", where: raw("(is_active = true)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model escalation_recipients {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id       String   @db.Uuid
+  name            String
+  phone           String
+  role            String
+  scope           String?
+  severity_filter String   @default("all")
+  sms_enabled     Boolean  @default(true)
+  is_active       Boolean  @default(true)
+  note            String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  clients         clients  @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id], map: "idx_escalation_recipients_client", where: raw("(is_active = true)"))
+  @@index([phone], map: "idx_escalation_recipients_phone")
+}
+
+model applied_migrations {
+  filename   String   @id
+  checksum   String
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("_applied_migrations")
+}
+
+model conversation_costs {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id       String   @db.Uuid
+  conversation_id String?  @db.Uuid
+  message_id      String?  @db.Uuid
+  escalation_id   String?  @db.Uuid
+  service         String
+  operation       String?
+  units           Decimal  @db.Decimal(14, 4)
+  unit_type       String
+  unit_price_usd  Decimal? @db.Decimal(14, 10)
+  cost_usd        Decimal  @db.Decimal(14, 8)
+  cost_pln        Decimal? @db.Decimal(14, 6)
+  fx_rate         Decimal? @db.Decimal(10, 4)
+  source          String
+  external_id     String?
+  raw_data        Json?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([client_id, created_at(sort: Desc)], map: "idx_costs_client_created")
+  @@index([conversation_id], map: "idx_costs_conv", where: raw("(conversation_id IS NOT NULL)"))
+  @@index([service, external_id], map: "idx_costs_external_id", where: raw("(external_id IS NOT NULL)"))
+}
+
+model service_pricing {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  service        String
+  operation      String
+  model_or_route String?
+  unit_price_usd Decimal   @db.Decimal(14, 10)
+  unit_type      String
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+  note           String?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([service, operation, model_or_route, effective_from])
+  @@index([service, operation, effective_from(sort: Desc)], map: "idx_pricing_lookup")
+}
+
+model fx_rates {
+  date       DateTime @id @db.Date
+  usd_pln    Decimal  @db.Decimal(10, 4)
+  eur_pln    Decimal? @db.Decimal(10, 4)
+  source     String   @default("NBP")
+  fetched_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([date(sort: Desc)], map: "idx_fx_rates_date_desc")
+}
+
+// === Ecommerce models (EtinBOT Faza 1.3+) ===
+
+model products {
+  id                 BigInt                 @id @default(autoincrement())
+  client_id          String                 @db.Uuid
+  ext_id             String
+  sku                String?
+  ean                String?
+  name               String?
+  price_pln          Decimal?               @db.Decimal(10, 2)
+  regular_price_pln  Decimal?               @db.Decimal(10, 2)
+  sale_price_pln     Decimal?               @db.Decimal(10, 2)
+  stock_qty          Int?
+  stock_status       String?
+  categories         String[]               @default([])
+  tags               String[]               @default([])
+  url                String?
+  image_url          String?
+  short_description  String?
+  description        String?
+  attributes         Json?
+  embedding          Unsupported("vector")?
+  is_active          Boolean?               @default(true)
+  last_synced_at     DateTime?              @db.Timestamptz(6)
+  content_checksum   String?
+  clients            clients                @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([client_id, ext_id])
+  @@index([client_id, is_active], map: "idx_products_client_active")
+}
+
+model orders_cache {
+  id               BigInt   @id @default(autoincrement())
+  client_id        String   @db.Uuid
+  ext_id           String
+  customer_email   String?
+  customer_phone   String?
+  customer_name    String?
+  status           String?
+  status_id        Int?
+  total_pln        Decimal? @db.Decimal(10, 2)
+  currency         String?  @default("PLN")
+  tracking_number  String?
+  tracking_url     String?
+  delivery_method  String?
+  payment_method   String?
+  items            Json?
+  date_add         DateTime? @db.Timestamptz(6)
+  date_confirmed   DateTime? @db.Timestamptz(6)
+  raw_data         Json?
+  last_synced_at   DateTime? @db.Timestamptz(6)
+  clients          clients   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([client_id, ext_id])
+  @@index([client_id, customer_email], map: "idx_orders_client_email")
+  @@index([client_id, customer_phone], map: "idx_orders_client_phone")
+  @@index([client_id, date_add(sort: Desc)], map: "idx_orders_client_date")
+}
+
+model order_status_map {
+  client_id   String  @db.Uuid
+  status_id   Int
+  status_name String?
+
+  @@id([client_id, status_id])
+}
+
+enum Role {
+  SUPERADMIN
+  OWNER
+  EDITOR
+  VIEWER
+}

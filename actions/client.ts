@@ -1,0 +1,219 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
+
+import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { prisma } from '@/lib/prisma'
+
+const BrandSchema = z.object({
+  botName: z.string().min(1).max(50),
+  botPersona: z.enum(['formal', 'casual']).default('formal'),
+  primaryLanguage: z.enum(['pl', 'en', 'uk', 'de']).default('pl'),
+})
+
+const EscalationSchema = z.object({
+  escalationPhoneOffice: z.string().max(30).optional().nullable(),
+  escalationPhoneSecurity: z.string().max(30).optional().nullable(),
+  escalationEmail: z.string().email().optional().nullable().or(z.literal('')),
+})
+
+const IntegrationsSchema = z.object({
+  idobookingTenant: z.string().max(50).optional().nullable(),
+  idobookingLogin: z.string().max(100).optional().nullable(),
+  idobookingApiKey: z.string().optional().nullable(),    // empty = no change
+  elevenlabsAgentId: z.string().max(100).optional().nullable(),
+})
+
+const IdoBookingCredsSchema = z.object({
+  scope: z.enum(['silver-place', 'silver-forest']),
+  tenant: z.string().min(1).max(50),
+  systemLogin: z.string().min(1).max(100),
+  apiPassword: z.string().max(200).optional(),  // empty = no change
+  isActive: z.boolean().default(true),
+})
+
+export type ActionResult = {
+  ok: boolean
+  message?: string
+  errors?: Record<string, string>
+}
+
+async function getClientIdBySlug(slug: string): Promise<string> {
+  const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
+  if (!c) throw new Error(`Client ${slug} not found`)
+  return c.id
+}
+
+function parseStr(fd: FormData, key: string): string | null {
+  const v = fd.get(key)
+  if (typeof v !== 'string') return null
+  const t = v.trim()
+  return t === '' ? null : t
+}
+
+// ─── Brand ────────────────────────────────────────────────────────────────
+
+export async function updateBrand(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const parsed = BrandSchema.safeParse({
+    botName: fd.get('botName') ?? '',
+    botPersona: fd.get('botPersona') ?? 'formal',
+    primaryLanguage: fd.get('primaryLanguage') ?? 'pl',
+  })
+  if (!parsed.success) {
+    return { ok: false, message: 'Błędy walidacji' }
+  }
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const id = await getClientIdBySlug(slug)
+  await prisma.clients.update({
+    where: { id },
+    data: {
+      bot_name: parsed.data.botName,
+      bot_persona: parsed.data.botPersona,
+      primary_language: parsed.data.primaryLanguage,
+    },
+  })
+  revalidatePath('/settings')
+  return { ok: true, message: 'Zapisano' }
+}
+
+// ─── Escalation ────────────────────────────────────────────────────────────
+
+export async function updateEscalation(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const parsed = EscalationSchema.safeParse({
+    escalationPhoneOffice: parseStr(fd, 'escalationPhoneOffice'),
+    escalationPhoneSecurity: parseStr(fd, 'escalationPhoneSecurity'),
+    escalationEmail: parseStr(fd, 'escalationEmail'),
+  })
+  if (!parsed.success) {
+    const errors: Record<string, string> = {}
+    parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
+    return { ok: false, message: 'Błędy walidacji', errors }
+  }
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const id = await getClientIdBySlug(slug)
+  await prisma.clients.update({
+    where: { id },
+    data: {
+      escalation_phone_office: parsed.data.escalationPhoneOffice,
+      escalation_phone_security: parsed.data.escalationPhoneSecurity,
+      escalation_email: parsed.data.escalationEmail === '' ? null : parsed.data.escalationEmail,
+    },
+  })
+  revalidatePath('/settings')
+  return { ok: true, message: 'Zapisano' }
+}
+
+// ─── Integrations ──────────────────────────────────────────────────────────
+
+export async function updateIntegrations(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const parsed = IntegrationsSchema.safeParse({
+    idobookingTenant: parseStr(fd, 'idobookingTenant'),
+    idobookingLogin: parseStr(fd, 'idobookingLogin'),
+    idobookingApiKey: parseStr(fd, 'idobookingApiKey'),
+    elevenlabsAgentId: parseStr(fd, 'elevenlabsAgentId'),
+  })
+  if (!parsed.success) {
+    return { ok: false, message: 'Błędy walidacji' }
+  }
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const id = await getClientIdBySlug(slug)
+
+  // TODO Sprint 2: szyfrowanie API key (pgcrypto AES-256). Na razie plaintext.
+  const updateData: any = {
+    idobooking_tenant: parsed.data.idobookingTenant,
+    idobooking_login: parsed.data.idobookingLogin,
+    elevenlabs_agent_id: parsed.data.elevenlabsAgentId,
+  }
+  // Klucz API: jeśli pusty → nie zmieniamy. Jeśli wpisany → zapisujemy.
+  if (parsed.data.idobookingApiKey) {
+    updateData.idobooking_api_key_enc = parsed.data.idobookingApiKey
+  }
+
+  await prisma.clients.update({ where: { id }, data: updateData })
+  revalidatePath('/settings')
+  return { ok: true, message: 'Zapisano' }
+}
+
+// ─── IdoBooking credentials (per-scope multi-tenant) ────────────────────────
+
+export async function upsertIdobookingCreds(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const parsed = IdoBookingCredsSchema.safeParse({
+    scope: fd.get('scope'),
+    tenant: (fd.get('tenant') as string)?.trim() ?? '',
+    systemLogin: (fd.get('systemLogin') as string)?.trim() ?? '',
+    apiPassword: (fd.get('apiPassword') as string) ?? '',
+    isActive: fd.get('isActive') === 'on' || fd.get('isActive') === 'true',
+  })
+  if (!parsed.success) {
+    const errors: Record<string, string> = {}
+    parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
+    return { ok: false, message: 'Błędy walidacji', errors }
+  }
+  const data = parsed.data
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const clientId = await getClientIdBySlug(slug)
+
+  // Sprawdź czy istnieje
+  const existing = await prisma.idobooking_credentials.findFirst({
+    where: { client_id: clientId, scope: data.scope },
+    select: { id: true },
+  })
+
+  if (existing) {
+    // Update — nie nadpisuj password jeśli puste
+    const updateData: any = {
+      tenant: data.tenant,
+      system_login: data.systemLogin,
+      is_active: data.isActive,
+    }
+    if (data.apiPassword && data.apiPassword.length > 0) {
+      updateData.api_password = data.apiPassword
+    }
+    await prisma.idobooking_credentials.update({
+      where: { id: existing.id },
+      data: updateData,
+    })
+  } else {
+    // Insert — password wymagany
+    if (!data.apiPassword) {
+      return { ok: false, message: 'Hasło jest wymagane przy pierwszym konfigurowaniu' }
+    }
+    await prisma.idobooking_credentials.create({
+      data: {
+        client_id: clientId,
+        scope: data.scope,
+        tenant: data.tenant,
+        system_login: data.systemLogin,
+        api_password: data.apiPassword,
+        is_active: data.isActive,
+      },
+    })
+  }
+
+  revalidatePath('/settings/integrations')
+  return { ok: true, message: `Zapisano ${data.scope}` }
+}
+
+export async function deleteIdobookingCreds(scope: 'silver-place' | 'silver-forest'): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const clientId = await getClientIdBySlug(slug)
+
+  await prisma.idobooking_credentials.deleteMany({
+    where: { client_id: clientId, scope },
+  })
+
+  revalidatePath('/settings/integrations')
+  return { ok: true, message: 'Usunięto' }
+}
