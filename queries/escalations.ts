@@ -2,11 +2,11 @@ import { prisma } from '@/lib/prisma'
 
 export type EscalationListRow = {
   id: string
-  conversationId: string
+  conversationId: string | null
   reason: string
   severity: string
   escalatedTo: string | null
-  notifiedAt: Date
+  notifiedAt: Date | null
   resolvedAt: Date | null
   resolvedBy: string | null
   resolutionNote: string | null
@@ -78,7 +78,8 @@ export async function listEscalations(opts: {
   })
 
   return rows.map((r) => {
-    const allMsgs = r.conversations.messages
+    const conv = r.conversations
+    const allMsgs = conv?.messages ?? []
     const elevenSummaryMsg = allMsgs.find((m) => m.model_used === 'elevenlabs-summary')
     const elevenSummary = elevenSummaryMsg
       ? elevenSummaryMsg.content.replace(/^\[Summary\]\s*/, '').trim()
@@ -96,14 +97,12 @@ export async function listEscalations(opts: {
       resolutionNote: r.resolution_note,
       newFaqId: r.new_faq_id,
       newFaqSuggested: r.new_faq_suggested ?? false,
-      channel: r.conversations.channel,
-      guestName: r.conversations.guest_name,
-      guestPhone: r.conversations.guest_phone,
-      guestEmail: r.conversations.guest_email,
-      language: r.conversations.language,
-      reservationId: r.conversations.reservation_id,
-      // Priorytet: 1) bot summary z escalate_to_human, 2) ElevenLabs transcript_summary,
-      // 3) brak (UI pokaże fallback do lastUserMessage)
+      channel: conv?.channel ?? 'unknown',
+      guestName: conv?.guest_name ?? null,
+      guestPhone: conv?.guest_phone ?? null,
+      guestEmail: conv?.guest_email ?? null,
+      language: conv?.language ?? null,
+      reservationId: conv?.reservation_id ?? null,
       summary: r.summary ?? elevenSummary,
       lastUserMessage: lastUserMsg?.content ?? null,
       lastUserMessageAt: lastUserMsg?.created_at ?? null,
