@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { requireAuth } from '@/lib/auth-helpers'
 import { getProductStats, listProducts, findAttr } from '@/queries/products'
+import { fmtFullDateTime } from '@/lib/datetime'
 import { SyncButton } from './_components/SyncButton'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
@@ -164,7 +165,7 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
                     {p.categories.join(', ') || '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                    {p.lastSyncedAt ? new Date(p.lastSyncedAt).toLocaleString('pl-PL') : '—'}
+                    {p.lastSyncedAt ? fmtFullDateTime(p.lastSyncedAt) : '—'}
                   </td>
                 </tr>
               )
