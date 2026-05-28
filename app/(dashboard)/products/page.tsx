@@ -118,11 +118,30 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="font-medium">{p.pricePln != null ? `${p.pricePln.toFixed(2)} PLN` : '—'}</span>
-                    {p.salePricePln && (
-                      <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
-                        promo {p.salePricePln.toFixed(2)} PLN
+                  <td className="px-4 py-3">
+                    {p.variants.length > 0 ? (
+                      <div>
+                        <span className="font-medium whitespace-nowrap">
+                          {p.pricePln != null ? `od ${p.pricePln.toFixed(2)} PLN` : '—'}
+                        </span>
+                        <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                          {p.variants.map((v, i) => (
+                            <div key={i} className="whitespace-nowrap">
+                              {v.label}: {v.pricePln != null ? `${v.pricePln.toFixed(2)} PLN` : '—'}
+                              {v.salePricePln && <span className="text-green-600"> (promo {v.salePricePln.toFixed(2)})</span>}
+                              {v.stockStatus === 'outofstock' && <span className="text-red-500"> · brak</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="whitespace-nowrap">
+                        <span className="font-medium">{p.pricePln != null ? `${p.pricePln.toFixed(2)} PLN` : '—'}</span>
+                        {p.salePricePln && (
+                          <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                            promo {p.salePricePln.toFixed(2)} PLN
+                          </span>
+                        )}
                       </span>
                     )}
                   </td>

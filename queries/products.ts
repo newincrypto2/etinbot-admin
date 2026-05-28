@@ -1,5 +1,14 @@
 import { prisma } from '@/lib/prisma'
 
+export type ProductVariant = {
+  label: string | null
+  pricePln: number | null
+  salePricePln: number | null
+  stockStatus: string | null
+  stockQty: number | null
+  url: string | null
+}
+
 export type ProductRow = {
   id: string
   extId: string
@@ -12,7 +21,29 @@ export type ProductRow = {
   imageUrl: string | null
   shortDescription: string | null
   url: string | null
+  productType: string | null
+  variants: ProductVariant[]
   lastSyncedAt: Date | null
+}
+
+function parseVariants(raw: unknown): ProductVariant[] {
+  let arr: unknown = raw
+  if (typeof arr === 'string') {
+    try { arr = JSON.parse(arr) } catch { return [] }
+  }
+  if (!Array.isArray(arr)) return []
+  return arr.flatMap((v) => {
+    if (!v || typeof v !== 'object') return []
+    const o = v as Record<string, unknown>
+    return [{
+      label: typeof o.label === 'string' ? o.label : null,
+      pricePln: o.price_pln != null ? Number(o.price_pln) : null,
+      salePricePln: o.sale_price_pln != null ? Number(o.sale_price_pln) : null,
+      stockStatus: typeof o.stock_status === 'string' ? o.stock_status : null,
+      stockQty: o.stock_qty != null ? Number(o.stock_qty) : null,
+      url: typeof o.url === 'string' ? o.url : null,
+    }]
+  })
 }
 
 export type ProductStats = {
@@ -101,6 +132,8 @@ export async function listProducts(opts: {
         image_url: true,
         short_description: true,
         url: true,
+        product_type: true,
+        variants: true,
         last_synced_at: true,
       },
     }),
@@ -120,6 +153,8 @@ export async function listProducts(opts: {
       imageUrl: r.image_url,
       shortDescription: r.short_description,
       url: r.url,
+      productType: r.product_type,
+      variants: parseVariants(r.variants),
       lastSyncedAt: r.last_synced_at,
     })),
     total,

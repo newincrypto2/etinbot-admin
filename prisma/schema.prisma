@@ -428,6 +428,8 @@ model products {
   short_description  String?
   description        String?
   attributes         Json?
+  variants           Json?
+  product_type       String?
   embedding          Unsupported("vector")?
   is_active          Boolean?               @default(true)
   last_synced_at     DateTime?              @db.Timestamptz(6)
