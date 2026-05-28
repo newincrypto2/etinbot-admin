@@ -30,9 +30,9 @@ export async function triggerProductSync(): Promise<SyncResult> {
     }
     const data = (await res.json().catch(() => ({}))) as { status?: string }
     if (data.status === 'already_running') {
-      return { ok: true, message: 'Sync już trwa — odśwież za chwilę.' }
+      return { ok: true, message: 'Sync już trwa — poczekaj i odśwież.' }
     }
-    return { ok: true, message: 'Synchronizacja uruchomiona w tle. Odśwież stronę za 1-2 min.' }
+    return { ok: true, message: 'Sync uruchomiony w tle (może potrwać kilka minut przy pełnym katalogu).' }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return { ok: false, message: `Nie udało się połączyć z backendem: ${msg}` }

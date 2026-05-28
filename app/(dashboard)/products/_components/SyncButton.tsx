@@ -14,7 +14,18 @@ export function SyncButton() {
   return (
     <div className="flex items-center gap-3">
       {msg && (
-        <span className={`text-xs ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{msg.text}</span>
+        <span className={`text-xs ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+          {msg.text}
+          {msg.ok && (
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="ml-2 underline hover:no-underline"
+            >
+              Odśwież
+            </button>
+          )}
+        </span>
       )}
       <button
         type="button"
@@ -24,7 +35,6 @@ export function SyncButton() {
             setMsg(null)
             const r = await triggerProductSync()
             setMsg({ ok: r.ok, text: r.message })
-            if (r.ok) setTimeout(() => router.refresh(), 2500)
           })
         }
         className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
