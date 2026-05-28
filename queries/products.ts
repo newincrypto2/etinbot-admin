@@ -1,0 +1,129 @@
+import { prisma } from '@/lib/prisma'
+
+export type ProductRow = {
+  id: string
+  extId: string
+  name: string | null
+  pricePln: number | null
+  salePricePln: number | null
+  stockStatus: string | null
+  stockQty: number | null
+  categories: string[]
+  imageUrl: string | null
+  shortDescription: string | null
+  url: string | null
+  lastSyncedAt: Date | null
+}
+
+export type ProductStats = {
+  total: number
+  inStock: number
+  outOfStock: number
+  onBackorder: number
+}
+
+async function clientIdBySlug(slug: string): Promise<string | null> {
+  const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
+  return c?.id ?? null
+}
+
+/** Statystyki liczone po CAŁEJ bazie (groupBy), nie po wyświetlanej stronie. */
+export async function getProductStats(clientSlug: string): Promise<ProductStats> {
+  const clientId = await clientIdBySlug(clientSlug)
+  if (!clientId) return { total: 0, inStock: 0, outOfStock: 0, onBackorder: 0 }
+
+  const groups = await prisma.products.groupBy({
+    by: ['stock_status'],
+    where: { client_id: clientId, is_active: true },
+    _count: { _all: true },
+  })
+
+  let inStock = 0
+  let outOfStock = 0
+  let onBackorder = 0
+  let total = 0
+  for (const g of groups) {
+    const c = g._count._all
+    total += c
+    if (g.stock_status === 'outofstock') outOfStock += c
+    else if (g.stock_status === 'onbackorder') onBackorder += c
+    else inStock += c
+  }
+  return { total, inStock, outOfStock, onBackorder }
+}
+
+export type ListProductsResult = {
+  rows: ProductRow[]
+  total: number       // ile pasuje do filtra (do paginacji)
+  page: number
+  pageSize: number
+}
+
+export async function listProducts(opts: {
+  clientSlug: string
+  search?: string
+  stock?: string      // 'all' | 'instock' | 'outofstock' | 'onbackorder'
+  page?: number
+  pageSize?: number
+}): Promise<ListProductsResult> {
+  const pageSize = opts.pageSize ?? 50
+  const page = Math.max(1, opts.page ?? 1)
+  const clientId = await clientIdBySlug(opts.clientSlug)
+  if (!clientId) return { rows: [], total: 0, page, pageSize }
+
+  const where: any = { client_id: clientId, is_active: true }
+  if (opts.search) {
+    where.OR = [
+      { name: { contains: opts.search, mode: 'insensitive' } },
+      { sku: { contains: opts.search, mode: 'insensitive' } },
+      { ext_id: { contains: opts.search } },
+    ]
+  }
+  if (opts.stock && opts.stock !== 'all') {
+    where.stock_status = opts.stock
+  }
+
+  const [rows, total] = await Promise.all([
+    prisma.products.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        ext_id: true,
+        name: true,
+        price_pln: true,
+        sale_price_pln: true,
+        stock_status: true,
+        stock_qty: true,
+        categories: true,
+        image_url: true,
+        short_description: true,
+        url: true,
+        last_synced_at: true,
+      },
+    }),
+    prisma.products.count({ where }),
+  ])
+
+  return {
+    rows: rows.map((r) => ({
+      id: String(r.id),
+      extId: r.ext_id,
+      name: r.name,
+      pricePln: r.price_pln ? Number(r.price_pln) : null,
+      salePricePln: r.sale_price_pln ? Number(r.sale_price_pln) : null,
+      stockStatus: r.stock_status,
+      stockQty: r.stock_qty,
+      categories: r.categories ?? [],
+      imageUrl: r.image_url,
+      shortDescription: r.short_description,
+      url: r.url,
+      lastSyncedAt: r.last_synced_at,
+    })),
+    total,
+    page,
+    pageSize,
+  }
+}
