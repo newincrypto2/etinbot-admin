@@ -23,7 +23,33 @@ export type ProductRow = {
   url: string | null
   productType: string | null
   variants: ProductVariant[]
+  attributes: Record<string, string>
   lastSyncedAt: Date | null
+}
+
+function parseAttributes(raw: unknown): Record<string, string> {
+  let obj: unknown = raw
+  if (typeof obj === 'string') {
+    try { obj = JSON.parse(obj) } catch { return {} }
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {}
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (v == null) continue
+    out[k] = String(v)
+  }
+  return out
+}
+
+/** Znajduje wartość atrybutu po częściowym dopasowaniu klucza (case-insensitive). */
+export function findAttr(attrs: Record<string, string>, ...needles: string[]): string | null {
+  const entries = Object.entries(attrs)
+  for (const needle of needles) {
+    const n = needle.toLowerCase()
+    const hit = entries.find(([k]) => k.toLowerCase().includes(n))
+    if (hit && hit[1]) return hit[1]
+  }
+  return null
 }
 
 function parseVariants(raw: unknown): ProductVariant[] {
@@ -134,6 +160,7 @@ export async function listProducts(opts: {
         url: true,
         product_type: true,
         variants: true,
+        attributes: true,
         last_synced_at: true,
       },
     }),
@@ -155,6 +182,7 @@ export async function listProducts(opts: {
       url: r.url,
       productType: r.product_type,
       variants: parseVariants(r.variants),
+      attributes: parseAttributes(r.attributes),
       lastSyncedAt: r.last_synced_at,
     })),
     total,

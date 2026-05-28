@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 import { requireAuth } from '@/lib/auth-helpers'
-import { getProductStats, listProducts } from '@/queries/products'
+import { getProductStats, listProducts, findAttr } from '@/queries/products'
+import { SyncButton } from './_components/SyncButton'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 const PAGE_SIZE = 50
@@ -41,11 +42,14 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Produkty</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Zsynchronizowane z WooCommerce. W bazie: <strong>{stats.total}</strong> aktywnych produktów.
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Produkty</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Zsynchronizowane z WooCommerce. W bazie: <strong>{stats.total}</strong> aktywnych produktów.
+          </p>
+        </div>
+        <SyncButton />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -95,6 +99,8 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
           <tbody className="divide-y">
             {rows.map((p) => {
               const desc = stripHtml(p.shortDescription)
+              const kraj = findAttr(p.attributes, 'kraj')
+              const sklad = findAttr(p.attributes, 'skład', 'sklad', 'składnik')
               return (
                 <tr key={p.id} className="hover:bg-slate-50 align-top">
                   <td className="px-4 py-3">
@@ -114,6 +120,12 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
                           )}
                         </div>
                         <div className="text-xs text-slate-400">ID: {p.extId}</div>
+                        {(kraj || sklad) && (
+                          <div className="text-xs text-slate-500 mt-1 space-y-0.5 max-w-md">
+                            {kraj && <div><span className="text-slate-400">Kraj:</span> {kraj}</div>}
+                            {sklad && <div className="line-clamp-1"><span className="text-slate-400">Skład:</span> {sklad}</div>}
+                          </div>
+                        )}
                         {desc && <div className="text-xs text-slate-500 mt-1 line-clamp-2 max-w-md">{desc}</div>}
                       </div>
                     </div>
