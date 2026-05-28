@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Phone, Mail, Calendar, Building2, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Building2, AlertTriangle, User, ShoppingCart, Banknote, Truck } from 'lucide-react'
 
 import { getConversation } from '@/queries/conversations'
 import { getConversationCosts } from '@/queries/costs'
@@ -68,29 +68,76 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
 
       {/* Metadane gościa */}
       <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
-        <Meta label="Telefon" value={conv.guestPhone} icon={<Phone className="h-3.5 w-3.5" />} mono />
-        <Meta label="Email" value={conv.guestEmail} icon={<Mail className="h-3.5 w-3.5" />} />
-        <Meta label="Rezerwacja" value={conv.reservationId} icon={<Calendar className="h-3.5 w-3.5" />} mono />
-        <Meta
-          label="Apartament"
-          value={
-            conv.apartmentName
-              ? conv.apartmentBuilding
-                ? `${conv.apartmentName} · ${BUILDING_LABEL[conv.apartmentBuilding] ?? conv.apartmentBuilding}`
-                : conv.apartmentName
-              : conv.apartmentId?.slice(0, 8) ?? null
-          }
-          icon={<Building2 className="h-3.5 w-3.5" />}
-        />
-        <Meta
-          label="Pobyt"
-          value={
-            conv.checkIn && conv.checkOut
-              ? `${fmtDateShort(conv.checkIn)} → ${fmtDateShort(conv.checkOut)}`
-              : null
-          }
-          icon={<Calendar className="h-3.5 w-3.5" />}
-        />
+        {conv.vertical === 'ecommerce' ? (
+          <>
+            <Meta label="Telefon" value={conv.guestPhone} icon={<Phone className="h-3.5 w-3.5" />} mono />
+            <Meta label="Email" value={conv.guestEmail} icon={<Mail className="h-3.5 w-3.5" />} />
+            <Meta label="Imię" value={conv.guestName} icon={<User className="h-3.5 w-3.5" />} />
+            <Meta
+              label="Nr zamówienia"
+              value={
+                conv.order
+                  ? conv.order.totalCount > 1
+                    ? `#${conv.order.extId} · +${conv.order.totalCount - 1} więcej`
+                    : `#${conv.order.extId}`
+                  : null
+              }
+              icon={<ShoppingCart className="h-3.5 w-3.5" />}
+              mono
+            />
+            <Meta
+              label="Status zamówienia"
+              value={
+                conv.order
+                  ? [
+                      conv.order.status,
+                      conv.order.total != null
+                        ? `${conv.order.total.toFixed(2)} ${conv.order.currency ?? 'PLN'}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || null
+                  : null
+              }
+              icon={<Banknote className="h-3.5 w-3.5" />}
+            />
+            {conv.order?.trackingNumber && (
+              <Meta
+                label="Tracking"
+                value={conv.order.trackingNumber}
+                href={conv.order.trackingUrl ?? undefined}
+                icon={<Truck className="h-3.5 w-3.5" />}
+                mono
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <Meta label="Telefon" value={conv.guestPhone} icon={<Phone className="h-3.5 w-3.5" />} mono />
+            <Meta label="Email" value={conv.guestEmail} icon={<Mail className="h-3.5 w-3.5" />} />
+            <Meta label="Rezerwacja" value={conv.reservationId} icon={<Calendar className="h-3.5 w-3.5" />} mono />
+            <Meta
+              label="Apartament"
+              value={
+                conv.apartmentName
+                  ? conv.apartmentBuilding
+                    ? `${conv.apartmentName} · ${BUILDING_LABEL[conv.apartmentBuilding] ?? conv.apartmentBuilding}`
+                    : conv.apartmentName
+                  : conv.apartmentId?.slice(0, 8) ?? null
+              }
+              icon={<Building2 className="h-3.5 w-3.5" />}
+            />
+            <Meta
+              label="Pobyt"
+              value={
+                conv.checkIn && conv.checkOut
+                  ? `${fmtDateShort(conv.checkIn)} → ${fmtDateShort(conv.checkOut)}`
+                  : null
+              }
+              icon={<Calendar className="h-3.5 w-3.5" />}
+            />
+          </>
+        )}
       </div>
 
       {/* Wiadomości */}
@@ -158,12 +205,15 @@ function Meta({
   value,
   icon,
   mono = false,
+  href,
 }: {
   label: string
   value: string | null | undefined
   icon: React.ReactNode
   mono?: boolean
+  href?: string
 }) {
+  const inner = mono ? <code className="font-mono text-xs">{value}</code> : <span>{value}</span>
   return (
     <div>
       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 uppercase tracking-wide">
@@ -171,7 +221,13 @@ function Meta({
       </div>
       <div className="mt-1 text-sm text-slate-900 font-medium">
         {value ? (
-          mono ? <code className="font-mono text-xs">{value}</code> : <span>{value}</span>
+          href ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+              {inner}
+            </a>
+          ) : (
+            inner
+          )
         ) : (
           <span className="text-slate-300">—</span>
         )}

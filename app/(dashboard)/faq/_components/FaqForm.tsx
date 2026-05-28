@@ -14,6 +14,7 @@ type Props = {
   initial?: Partial<FaqInput> & { answerVoice?: string | null }
   categories: string[]
   submitLabel?: string
+  vertical?: 'rental' | 'ecommerce'
 }
 
 const SCOPES = [
@@ -22,7 +23,7 @@ const SCOPES = [
   { value: 'silver-forest', label: 'Silver Forest' },
 ]
 
-export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapisz' }: Props) {
+export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapisz', vertical = 'rental' }: Props) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
 
   return (
@@ -50,29 +51,33 @@ export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapis
         )}
       </Field>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={vertical === 'ecommerce' ? '' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
         <Field label="Kategoria" name="category" error={state.errors?.category}>
           <Input
             name="category"
             defaultValue={initial.category ?? ''}
             required
             list="faq-categories"
-            placeholder="np. parking, wifi"
+            placeholder={vertical === 'ecommerce' ? 'np. dostawa, płatności, zwroty' : 'np. parking, wifi'}
           />
           <datalist id="faq-categories">
             {categories.map((c) => <option key={c} value={c} />)}
           </datalist>
         </Field>
 
-        <Field label="Budynek (scope)" name="scope">
-          <select
-            name="scope"
-            defaultValue={initial.scope ?? 'both'}
-            className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
-          >
-            {SCOPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </Field>
+        {vertical === 'ecommerce' ? (
+          <input type="hidden" name="scope" value="both" />
+        ) : (
+          <Field label="Budynek (scope)" name="scope">
+            <select
+              name="scope"
+              defaultValue={initial.scope ?? 'both'}
+              className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
+            >
+              {SCOPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </Field>
+        )}
       </div>
 
       <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">

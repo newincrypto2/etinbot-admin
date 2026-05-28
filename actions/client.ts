@@ -25,6 +25,13 @@ const IntegrationsSchema = z.object({
   elevenlabsAgentId: z.string().max(100).optional().nullable(),
 })
 
+const EcommerceIntegrationsSchema = z.object({
+  baselinkerToken: z.string().max(200).optional(),    // empty = no change
+  wcUrl: z.string().url().max(300).optional().nullable().or(z.literal('')),
+  wcConsumerKey: z.string().max(200).optional(),      // empty = no change
+  wcConsumerSecret: z.string().max(200).optional(),   // empty = no change
+})
+
 const IdoBookingCredsSchema = z.object({
   scope: z.enum(['silver-place', 'silver-forest']),
   tenant: z.string().min(1).max(50),
@@ -138,6 +145,47 @@ export async function updateIntegrations(_prev: ActionResult, fd: FormData): Pro
   await prisma.clients.update({ where: { id }, data: updateData })
   revalidatePath('/settings')
   return { ok: true, message: 'Zapisano' }
+}
+
+// ─── Ecommerce integrations (BaseLinker + WooCommerce → config.integrations) ─
+// Backend EtinBOT czyta te klucze z clients.config.integrations JSONB (tool_registry.py).
+// Sekrety (token, consumer_key/secret): puste pole = nie zmieniaj. wc_url można wyczyścić.
+
+export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const parsed = EcommerceIntegrationsSchema.safeParse({
+    baselinkerToken: parseStr(fd, 'baselinkerToken') ?? undefined,
+    wcUrl: parseStr(fd, 'wcUrl'),
+    wcConsumerKey: parseStr(fd, 'wcConsumerKey') ?? undefined,
+    wcConsumerSecret: parseStr(fd, 'wcConsumerSecret') ?? undefined,
+  })
+  if (!parsed.success) {
+    const errors: Record<string, string> = {}
+    parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
+    return { ok: false, message: 'Błędy walidacji', errors }
+  }
+
+  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const client = await prisma.clients.findUnique({ where: { slug }, select: { id: true, config: true } })
+  if (!client) return { ok: false, message: `Klient ${slug} nie znaleziony` }
+
+  // TODO: szyfrowanie sekretów (pgcrypto). Na razie plaintext w JSONB (jak env fallback).
+  const config: Record<string, any> = (client.config as any) ?? {}
+  const integ: Record<string, any> = { ...(config.integrations ?? {}) }
+
+  integ.wc_url = parsed.data.wcUrl || null   // niesekret — można wyczyścić
+  if (parsed.data.baselinkerToken) integ.baselinker_token = parsed.data.baselinkerToken
+  if (parsed.data.wcConsumerKey) integ.wc_consumer_key = parsed.data.wcConsumerKey
+  if (parsed.data.wcConsumerSecret) integ.wc_consumer_secret = parsed.data.wcConsumerSecret
+
+  config.integrations = integ
+
+  await prisma.clients.update({ where: { id: client.id }, data: { config: config as any } })
+  revalidatePath('/settings/integrations')
+  revalidatePath('/settings')
+  return { ok: true, message: 'Zapisano integracje' }
 }
 
 // ─── IdoBooking credentials (per-scope multi-tenant) ────────────────────────

@@ -1,9 +1,21 @@
+import { cache } from 'react'
+
 import { prisma } from '@/lib/prisma'
+
+export type Vertical = 'rental' | 'ecommerce'
+
+/** Vertical klienta — steruje całym UI panelu (rental = Silver Place wzorzec, ecommerce = KH).
+ *  Cache'owane per-request, bo czyta to wiele server-componentów w jednym renderze. */
+export const getVertical = cache(async (slug: string): Promise<Vertical> => {
+  const c = await prisma.clients.findUnique({ where: { slug }, select: { vertical: true } })
+  return c?.vertical === 'ecommerce' ? 'ecommerce' : 'rental'
+})
 
 export type ClientSettings = {
   id: string
   slug: string
   name: string
+  vertical: Vertical
   botName: string | null
   botPersona: string | null
   primaryLanguage: string
@@ -27,6 +39,7 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
       slug: true,
       name: true,
       plan: true,
+      vertical: true,
       bot_name: true,
       bot_persona: true,
       primary_language: true,
@@ -47,6 +60,7 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
     slug: c.slug,
     name: c.name,
     plan: c.plan,
+    vertical: c.vertical === 'ecommerce' ? 'ecommerce' : 'rental',
     botName: c.bot_name,
     botPersona: c.bot_persona,
     primaryLanguage: c.primary_language,
@@ -107,4 +121,41 @@ export async function listIdobookingCreds(clientSlug: string): Promise<IdoBookin
     lastErrorAt: r.last_error_at,
     updatedAt: r.updated_at,
   }))
+}
+
+// ─── Ecommerce integrations (BaseLinker + WooCommerce) ──────────────────────
+// Klucze trzymane w clients.config.integrations JSONB — backend EtinBOT czyta
+// je stamtąd (z fallbackiem na env). Sekretów nie zwracamy, tylko flagę set/not.
+
+export type EcommerceIntegrations = {
+  baselinkerTokenSet: boolean
+  wcUrl: string | null
+  wcKeySet: boolean
+  wcSecretSet: boolean
+  lastOrderSyncAt: Date | null
+  lastProductSyncAt: Date | null
+  ordersCount: number
+  productsCount: number
+}
+
+export async function getEcommerceIntegrations(slug: string): Promise<EcommerceIntegrations | null> {
+  const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true, config: true } })
+  if (!c) return null
+  const integ = (((c.config as any)?.integrations) ?? {}) as Record<string, unknown>
+  const [lastOrder, lastProduct, ordersCount, productsCount] = await Promise.all([
+    prisma.orders_cache.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),
+    prisma.products.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),
+    prisma.orders_cache.count({ where: { client_id: c.id } }),
+    prisma.products.count({ where: { client_id: c.id } }),
+  ])
+  return {
+    baselinkerTokenSet: Boolean(integ.baselinker_token),
+    wcUrl: typeof integ.wc_url === 'string' && integ.wc_url ? integ.wc_url : null,
+    wcKeySet: Boolean(integ.wc_consumer_key),
+    wcSecretSet: Boolean(integ.wc_consumer_secret),
+    lastOrderSyncAt: lastOrder._max.last_synced_at,
+    lastProductSyncAt: lastProduct._max.last_synced_at,
+    ordersCount,
+    productsCount,
+  }
 }

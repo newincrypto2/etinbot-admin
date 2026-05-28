@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { getFaqById, listCategories, listTranslations } from '@/queries/faq'
+import { getVertical } from '@/queries/client'
 import { updateFaq } from '@/actions/faq'
 import { FaqForm } from '../../_components/FaqForm'
 import { TranslationsSection } from './_components/TranslationsSection'
@@ -11,10 +12,11 @@ const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function EditFaqPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
-  const [faq, categories, translations] = await Promise.all([
+  const [faq, categories, translations, vertical] = await Promise.all([
     getFaqById(id),
     listCategories(CLIENT_SLUG),
     listTranslations(id),
+    getVertical(CLIENT_SLUG),
   ])
   if (!faq) notFound()
 
@@ -52,6 +54,7 @@ export default async function EditFaqPage(props: { params: Promise<{ id: string 
           }}
           categories={categories}
           submitLabel="Zapisz zmiany"
+          vertical={vertical}
         />
       </div>
 

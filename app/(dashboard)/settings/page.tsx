@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Users, Key, MessageSquareText, Phone } from 'lucide-react'
 
 import { requireRole } from '@/lib/auth-helpers'
-import { getClientSettings } from '@/queries/client'
+import { getClientSettings, getEcommerceIntegrations } from '@/queries/client'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
@@ -13,6 +13,9 @@ export default async function SettingsPage() {
   if (!settings) {
     return <div className="p-8 text-slate-500">Brak danych klienta.</div>
   }
+
+  const isEcom = settings.vertical === 'ecommerce'
+  const ecom = isEcom ? await getEcommerceIntegrations(CLIENT_SLUG) : null
 
   return (
     <div className="space-y-6">
@@ -47,11 +50,19 @@ export default async function SettingsPage() {
           icon={<Key className="h-5 w-5" />}
           title="Integracje"
           description={
-            <>
-              <div>IdoBooking: {settings.idobookingTenant ? `${settings.idobookingTenant}.idosell.com` : '— nie skonfigurowane'}</div>
-              <div>API key: {settings.hasIdobookingApiKey ? '✓ ustawiony' : '✗ brak'}</div>
-              <div>ElevenLabs: {settings.hasElevenlabsAgent ? '✓ podpięty' : '✗ brak'}</div>
-            </>
+            isEcom ? (
+              <>
+                <div>BaseLinker: {ecom?.baselinkerTokenSet ? '✓ token ustawiony' : '✗ brak tokena'}</div>
+                <div>WooCommerce: {ecom?.wcUrl ? `✓ ${ecom.wcUrl}` : '✗ nie skonfigurowane'}</div>
+                <div>Sync: {ecom?.ordersCount ?? 0} zamówień · {ecom?.productsCount ?? 0} produktów</div>
+              </>
+            ) : (
+              <>
+                <div>IdoBooking: {settings.idobookingTenant ? `${settings.idobookingTenant}.idosell.com` : '— nie skonfigurowane'}</div>
+                <div>API key: {settings.hasIdobookingApiKey ? '✓ ustawiony' : '✗ brak'}</div>
+                <div>ElevenLabs: {settings.hasElevenlabsAgent ? '✓ podpięty' : '✗ brak'}</div>
+              </>
+            )
           }
         />
         <SettingsCard

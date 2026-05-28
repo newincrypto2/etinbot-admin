@@ -116,10 +116,23 @@ export type MessageRow = {
   createdAt: Date
 }
 
+export type ConversationOrder = {
+  extId: string
+  status: string | null
+  total: number | null
+  currency: string | null
+  trackingNumber: string | null
+  trackingUrl: string | null
+  dateAdd: Date | null
+  /** ile zamówień ma ten klient (po emailu/telefonie) — żeby pokazać "+N więcej" */
+  totalCount: number
+}
+
 export type ConversationDetail = {
   id: string
   channel: string
   threadId: string
+  vertical: 'rental' | 'ecommerce'
   guestName: string | null
   guestPhone: string | null
   guestEmail: string | null
@@ -129,6 +142,7 @@ export type ConversationDetail = {
   apartmentBuilding: string | null
   checkIn: Date | null
   checkOut: Date | null
+  order: ConversationOrder | null   // ecommerce: ostatnie zamówienie klienta
   language: string | null
   status: string
   lastMessageAt: Date
@@ -152,6 +166,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
       reservation_id: true,
       apartment_id: true,
       apartments: { select: { name: true, building_code: true } },
+      clients: { select: { vertical: true } },
       language: true,
       status: true,
       last_message_at: true,
@@ -176,6 +191,57 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
     },
   })
   if (!conv) return null
+
+  const vertical: 'rental' | 'ecommerce' =
+    conv.clients?.vertical === 'ecommerce' ? 'ecommerce' : 'rental'
+
+  // Ecommerce: dociągamy ostatnie zamówienie klienta z orders_cache po emailu/telefonie
+  // (conversations nie ma order_id — bot identyfikuje zamówienie toolem find_order).
+  let order: ConversationOrder | null = null
+  if (vertical === 'ecommerce' && (conv.guest_email || conv.guest_phone)) {
+    const or: any[] = []
+    if (conv.guest_email) or.push({ customer_email: { equals: conv.guest_email, mode: 'insensitive' } })
+    if (conv.guest_phone) or.push({ customer_phone: conv.guest_phone })
+    const orderWhere = { client_id: conv.client_id, OR: or }
+    const [latest, count] = await Promise.all([
+      prisma.orders_cache.findFirst({
+        where: orderWhere,
+        orderBy: { date_add: 'desc' },
+        select: {
+          ext_id: true,
+          status: true,
+          status_id: true,
+          total_pln: true,
+          currency: true,
+          tracking_number: true,
+          tracking_url: true,
+          date_add: true,
+        },
+      }),
+      prisma.orders_cache.count({ where: orderWhere }),
+    ])
+    if (latest) {
+      // status: preferuj nazwę z orders_cache; jeśli pusta — zmapuj status_id przez order_status_map
+      let statusName = latest.status
+      if (!statusName && latest.status_id != null) {
+        const sm = await prisma.order_status_map.findUnique({
+          where: { client_id_status_id: { client_id: conv.client_id, status_id: latest.status_id } },
+          select: { status_name: true },
+        })
+        statusName = sm?.status_name ?? null
+      }
+      order = {
+        extId: latest.ext_id,
+        status: statusName,
+        total: latest.total_pln ? Number(latest.total_pln) : null,
+        currency: latest.currency,
+        trackingNumber: latest.tracking_number,
+        trackingUrl: latest.tracking_url,
+        dateAdd: latest.date_add,
+        totalCount: count,
+      }
+    }
+  }
 
   // Fallback: zassij z reservations_cache jeśli conversations.guest_name / apartment są puste
   // ale mamy reservation_id (bot zidentyfikował gościa ale state.update_context był wcześniej)
@@ -213,6 +279,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
     id: conv.id,
     channel: conv.channel,
     threadId: conv.thread_id,
+    vertical,
     guestName: conv.guest_name ?? resGuestName,
     guestPhone: conv.guest_phone,
     guestEmail: conv.guest_email,
@@ -222,6 +289,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
     apartmentBuilding: conv.apartments?.building_code ?? resApartmentBuilding,
     checkIn: resCheckIn,
     checkOut: resCheckOut,
+    order,
     language: conv.language,
     status: conv.status,
     lastMessageAt: conv.last_message_at,

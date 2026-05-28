@@ -2,13 +2,17 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 import { listCategories } from '@/queries/faq'
+import { getVertical } from '@/queries/client'
 import { createFaq } from '@/actions/faq'
 import { FaqForm } from '../_components/FaqForm'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function NewFaqPage() {
-  const categories = await listCategories(CLIENT_SLUG)
+  const [categories, vertical] = await Promise.all([
+    listCategories(CLIENT_SLUG),
+    getVertical(CLIENT_SLUG),
+  ])
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -32,6 +36,7 @@ export default async function NewFaqPage() {
           action={createFaq}
           categories={categories}
           submitLabel="Utwórz"
+          vertical={vertical}
         />
       </div>
     </div>
