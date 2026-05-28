@@ -132,6 +132,10 @@ export type EcommerceIntegrations = {
   wcUrl: string | null
   wcKeySet: boolean
   wcSecretSet: boolean
+  twilioSmsNumber: string | null
+  messengerPageId: string | null
+  messengerTokenSet: boolean
+  messengerAppSecretSet: boolean
   lastOrderSyncAt: Date | null
   lastProductSyncAt: Date | null
   ordersCount: number
@@ -148,11 +152,16 @@ export async function getEcommerceIntegrations(slug: string): Promise<EcommerceI
     prisma.orders_cache.count({ where: { client_id: c.id } }),
     prisma.products.count({ where: { client_id: c.id } }),
   ])
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
   return {
     baselinkerTokenSet: Boolean(integ.baselinker_token),
-    wcUrl: typeof integ.wc_url === 'string' && integ.wc_url ? integ.wc_url : null,
+    wcUrl: str(integ.wc_url),
     wcKeySet: Boolean(integ.wc_consumer_key),
     wcSecretSet: Boolean(integ.wc_consumer_secret),
+    twilioSmsNumber: str(integ.twilio_sms_number),
+    messengerPageId: str(integ.messenger_page_id),
+    messengerTokenSet: Boolean(integ.messenger_page_token),
+    messengerAppSecretSet: Boolean(integ.messenger_app_secret),
     lastOrderSyncAt: lastOrder._max.last_synced_at,
     lastProductSyncAt: lastProduct._max.last_synced_at,
     ordersCount,

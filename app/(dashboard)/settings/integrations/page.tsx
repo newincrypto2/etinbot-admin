@@ -78,6 +78,10 @@ export default async function IntegrationsSettingsPage() {
               wcUrl: ecom.wcUrl,
               wcKeySet: ecom.wcKeySet,
               wcSecretSet: ecom.wcSecretSet,
+              twilioSmsNumber: ecom.twilioSmsNumber,
+              messengerPageId: ecom.messengerPageId,
+              messengerTokenSet: ecom.messengerTokenSet,
+              messengerAppSecretSet: ecom.messengerAppSecretSet,
             }}
           />
         </div>

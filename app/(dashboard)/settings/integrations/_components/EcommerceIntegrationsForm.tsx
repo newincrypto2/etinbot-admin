@@ -15,6 +15,10 @@ type Props = {
     wcUrl: string | null
     wcKeySet: boolean
     wcSecretSet: boolean
+    twilioSmsNumber: string | null
+    messengerPageId: string | null
+    messengerTokenSet: boolean
+    messengerAppSecretSet: boolean
   }
 }
 
@@ -81,6 +85,44 @@ export function EcommerceIntegrationsForm({ action, initial }: Props) {
             />
           </div>
         </div>
+      </div>
+
+      {/* Kanały tekstowe */}
+      <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+        <div>
+          <h3 className="font-medium text-slate-900 mb-1">Kanały tekstowe (bot odpisuje klientom)</h3>
+          <p className="text-xs text-slate-500">
+            SMS przez Twilio i Messenger przez Facebooka. Webhooki:
+            <code className="font-mono"> /webhook/twilio/sms</code> i <code className="font-mono">/webhook/messenger</code>.
+          </p>
+        </div>
+
+        <div>
+          <Label className="text-xs font-medium block mb-1">Numer SMS (Twilio, na który piszą klienci)</Label>
+          <Input name="twilioSmsNumber" defaultValue={initial.twilioSmsNumber ?? ''} placeholder="+48..." />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs font-medium block mb-1">Messenger — Page ID</Label>
+            <Input name="messengerPageId" defaultValue={initial.messengerPageId ?? ''} placeholder="np. 1234567890" />
+          </div>
+          <div>
+            <Label className="text-xs font-medium block mb-1">
+              Messenger — Page Token {initial.messengerTokenSet && <span className="text-emerald-600 font-normal">✓</span>}
+            </Label>
+            <Input name="messengerPageToken" type="password" placeholder={initial.messengerTokenSet ? '••••• zostaw puste' : 'EAAB...'} />
+          </div>
+          <div>
+            <Label className="text-xs font-medium block mb-1">
+              Messenger — App Secret {initial.messengerAppSecretSet && <span className="text-emerald-600 font-normal">✓</span>}
+            </Label>
+            <Input name="messengerAppSecret" type="password" placeholder={initial.messengerAppSecretSet ? '••••• zostaw puste' : 'app secret'} />
+          </div>
+        </div>
+        <p className="text-xs text-slate-500">
+          Verify token webhooka FB ustaw w env backendu jako <code className="font-mono">MESSENGER_VERIFY_TOKEN</code> (ten sam co w panelu FB).
+        </p>
       </div>
 
       <div className="flex justify-end">

@@ -30,6 +30,11 @@ const EcommerceIntegrationsSchema = z.object({
   wcUrl: z.string().url().max(300).optional().nullable().or(z.literal('')),
   wcConsumerKey: z.string().max(200).optional(),      // empty = no change
   wcConsumerSecret: z.string().max(200).optional(),   // empty = no change
+  // Kanały tekstowe
+  twilioSmsNumber: z.string().max(30).optional().nullable().or(z.literal('')),
+  messengerPageId: z.string().max(50).optional().nullable().or(z.literal('')),
+  messengerPageToken: z.string().max(400).optional(),   // secret, empty = no change
+  messengerAppSecret: z.string().max(200).optional(),   // secret, empty = no change
 })
 
 const IdoBookingCredsSchema = z.object({
@@ -160,6 +165,10 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
     wcUrl: parseStr(fd, 'wcUrl'),
     wcConsumerKey: parseStr(fd, 'wcConsumerKey') ?? undefined,
     wcConsumerSecret: parseStr(fd, 'wcConsumerSecret') ?? undefined,
+    twilioSmsNumber: parseStr(fd, 'twilioSmsNumber'),
+    messengerPageId: parseStr(fd, 'messengerPageId'),
+    messengerPageToken: parseStr(fd, 'messengerPageToken') ?? undefined,
+    messengerAppSecret: parseStr(fd, 'messengerAppSecret') ?? undefined,
   })
   if (!parsed.success) {
     const errors: Record<string, string> = {}
@@ -179,6 +188,11 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
   if (parsed.data.baselinkerToken) integ.baselinker_token = parsed.data.baselinkerToken
   if (parsed.data.wcConsumerKey) integ.wc_consumer_key = parsed.data.wcConsumerKey
   if (parsed.data.wcConsumerSecret) integ.wc_consumer_secret = parsed.data.wcConsumerSecret
+  // Kanały tekstowe — numer SMS + page_id niesekretne (można czyścić); tokeny tylko gdy podane
+  integ.twilio_sms_number = parsed.data.twilioSmsNumber || null
+  integ.messenger_page_id = parsed.data.messengerPageId || null
+  if (parsed.data.messengerPageToken) integ.messenger_page_token = parsed.data.messengerPageToken
+  if (parsed.data.messengerAppSecret) integ.messenger_app_secret = parsed.data.messengerAppSecret
 
   config.integrations = integ
 
