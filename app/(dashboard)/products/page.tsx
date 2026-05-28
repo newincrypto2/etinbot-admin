@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { requireAuth } from '@/lib/auth-helpers'
 import { getProductStats, listProducts, findAttr } from '@/queries/products'
 import { fmtFullDateTime } from '@/lib/datetime'
-import { SyncButton } from './_components/SyncButton'
+import { SyncButton } from '@/components/SyncButton'
+import { triggerProductSync } from '@/actions/products'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 const PAGE_SIZE = 50
@@ -50,7 +51,7 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
             Zsynchronizowane z WooCommerce. W bazie: <strong>{stats.total}</strong> aktywnych produktów.
           </p>
         </div>
-        <SyncButton />
+        <SyncButton action={triggerProductSync} idleLabel="Synchronizuj z WooCommerce" />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

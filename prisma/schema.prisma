@@ -444,6 +444,7 @@ model orders_cache {
   id               BigInt   @id @default(autoincrement())
   client_id        String   @db.Uuid
   ext_id           String
+  shop_order_id    String?
   customer_email   String?
   customer_phone   String?
   customer_name    String?

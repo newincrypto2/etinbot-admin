@@ -1,30 +1,41 @@
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { fmtFullDateTime } from '@/lib/datetime'
+import { SyncButton } from '@/components/SyncButton'
+import { triggerOrderSync } from '@/actions/orders'
+
+const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function OrdersPage() {
   await requireAuth()
 
-  const clientId = process.env.CLIENT_ID!
-  const orders = await prisma.orders_cache.findMany({
-    where: { client_id: clientId },
-    orderBy: { date_add: 'desc' },
-    take: 50,
+  const client = await prisma.clients.findUnique({
+    where: { slug: CLIENT_SLUG },
+    select: { id: true },
   })
+  if (!client) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
+  const clientId = client.id
 
-  const statusMap = await prisma.order_status_map.findMany({
-    where: { client_id: clientId },
-  })
-  const statusLookup = Object.fromEntries(
-    statusMap.map(s => [s.status_id, s.status_name])
-  )
+  const [orders, statusMap] = await Promise.all([
+    prisma.orders_cache.findMany({
+      where: { client_id: clientId },
+      orderBy: { date_add: 'desc' },
+      take: 50,
+    }),
+    prisma.order_status_map.findMany({ where: { client_id: clientId } }),
+  ])
+  const statusLookup = Object.fromEntries(statusMap.map((s) => [s.status_id, s.status_name]))
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Zamowienia</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Ostatnie {orders.length} zamowien z BaseLinker (sync co 10 min)
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Zamówienia</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Ostatnie {orders.length} zamówień z BaseLinker (sync co 10 min). Nr = numer w sklepie (ten, który zna klient).
+          </p>
+        </div>
+        <SyncButton action={triggerOrderSync} idleLabel="Synchronizuj zamówienia" />
       </div>
 
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
@@ -41,11 +52,16 @@ export default async function OrdersPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {orders.map(o => {
+            {orders.map((o) => {
               const statusName = (o.status_id !== null ? statusLookup[o.status_id] : null) || o.status || '-'
               return (
                 <tr key={String(o.id)} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-xs font-medium">#{o.ext_id}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-xs font-medium text-slate-900">
+                      {o.shop_order_id ? `#${o.shop_order_id}` : <span className="text-slate-400">brak nr sklepu</span>}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">BL: {o.ext_id}</div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900">{o.customer_name || '-'}</div>
                     <div className="text-xs text-slate-400">{o.customer_email || o.customer_phone || ''}</div>
@@ -53,7 +69,7 @@ export default async function OrdersPage() {
                   <td className="px-4 py-3">
                     <StatusBadge status={statusName} />
                   </td>
-                  <td className="px-4 py-3 font-medium">
+                  <td className="px-4 py-3 font-medium whitespace-nowrap">
                     {o.total_pln?.toString() || '-'} {o.currency || 'PLN'}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">{o.delivery_method || '-'}</td>
@@ -70,8 +86,8 @@ export default async function OrdersPage() {
                       <span className="text-slate-300">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-400">
-                    {o.date_add ? new Date(o.date_add).toLocaleString('pl-PL') : '-'}
+                  <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                    {o.date_add ? fmtFullDateTime(o.date_add) : '-'}
                   </td>
                 </tr>
               )
@@ -79,7 +95,7 @@ export default async function OrdersPage() {
             {orders.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                  Brak zamowien w cache. Sync uruchomi sie automatycznie co 10 minut.
+                  Brak zamówień w cache. Kliknij „Synchronizuj zamówienia" lub poczekaj na sync co 10 minut.
                 </td>
               </tr>
             )}
@@ -93,13 +109,13 @@ export default async function OrdersPage() {
 function StatusBadge({ status }: { status: string }) {
   const lower = status.toLowerCase()
   let color = 'bg-slate-100 text-slate-600'
-  if (lower.includes('wyslan') || lower.includes('sent') || lower.includes('delivered')) {
+  if (lower.includes('wyslan') || lower.includes('wysłan') || lower.includes('sent') || lower.includes('delivered')) {
     color = 'bg-green-50 text-green-700'
   } else if (lower.includes('nowe') || lower.includes('new') || lower.includes('pending')) {
     color = 'bg-blue-50 text-blue-700'
   } else if (lower.includes('anulowane') || lower.includes('cancel')) {
     color = 'bg-red-50 text-red-700'
-  } else if (lower.includes('realizacja') || lower.includes('processing')) {
+  } else if (lower.includes('realizacja') || lower.includes('processing') || lower.includes('wysłania')) {
     color = 'bg-yellow-50 text-yellow-700'
   }
   return <span className={`text-xs px-2 py-0.5 rounded-full ${color}`}>{status}</span>

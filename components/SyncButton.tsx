@@ -4,9 +4,15 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 
-import { triggerProductSync } from '@/actions/products'
+type SyncResult = { ok: boolean; message: string }
 
-export function SyncButton() {
+export function SyncButton({
+  action,
+  idleLabel,
+}: {
+  action: () => Promise<SyncResult>
+  idleLabel: string
+}) {
   const [pending, startTransition] = useTransition()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const router = useRouter()
@@ -33,14 +39,14 @@ export function SyncButton() {
         onClick={() =>
           startTransition(async () => {
             setMsg(null)
-            const r = await triggerProductSync()
+            const r = await action()
             setMsg({ ok: r.ok, text: r.message })
           })
         }
         className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
       >
         <RefreshCw className={`h-4 w-4 ${pending ? 'animate-spin' : ''}`} />
-        {pending ? 'Synchronizuję…' : 'Synchronizuj z WooCommerce'}
+        {pending ? 'Synchronizuję…' : idleLabel}
       </button>
     </div>
   )
