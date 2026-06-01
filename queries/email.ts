@@ -18,6 +18,7 @@ export type EmailThreadRow = {
   draftStatus: string | null
   draftOrigin: string | null
   draftEscalated: boolean
+  tags: string[]
 }
 
 const VIEW_STATUSES: Record<string, string[] | null> = {
@@ -42,8 +43,12 @@ export async function listEmailThreads(opts: {
 
   const where: Record<string, unknown> = { channel: 'email' }
   if (clientId) where.client_id = clientId
-  const statuses = VIEW_STATUSES[opts.view ?? 'inbox']
-  if (statuses) where.status = { in: statuses }
+  if (opts.view === 'b2b') {
+    where.tags = { has: 'b2b' }
+  } else {
+    const statuses = VIEW_STATUSES[opts.view ?? 'inbox']
+    if (statuses) where.status = { in: statuses }
+  }
 
   if (opts.search?.trim()) {
     const s = opts.search.trim()
@@ -78,6 +83,7 @@ export async function listEmailThreads(opts: {
         guest_name: true,
         inbox_address: true,
         last_message_at: true,
+        tags: true,
       },
     }),
   ])
@@ -118,6 +124,7 @@ export async function listEmailThreads(opts: {
         draftStatus: d?.status ?? null,
         draftOrigin: d?.origin ?? null,
         draftEscalated: d?.escalated ?? false,
+        tags: c.tags ?? [],
       })
     }
   }
@@ -155,6 +162,7 @@ export type EmailThreadDetail = {
   guestEmail: string | null
   guestName: string | null
   inboxAddress: string | null
+  tags: string[]
   messages: { role: string; content: string; createdAt: Date }[]
   inboundAttachments: EmailAttachment[]
   drafts: {
@@ -182,6 +190,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
       guest_email: true,
       guest_name: true,
       inbox_address: true,
+      tags: true,
     },
   })
   if (!conv) return null
@@ -232,6 +241,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
     guestEmail: conv.guest_email,
     guestName: conv.guest_name,
     inboxAddress: conv.inbox_address,
+    tags: conv.tags ?? [],
     messages: messages.map((m) => ({ role: m.role, content: m.content, createdAt: m.created_at })),
     inboundAttachments,
     drafts: drafts.map((d) => ({
@@ -290,9 +300,58 @@ export async function getEmailStats(clientSlug?: string) {
   const clientId = await clientIdFromSlug(clientSlug)
   const base: Record<string, unknown> = { channel: 'email' }
   if (clientId) base.client_id = clientId
-  const [open, escalated] = await Promise.all([
+  const [open, escalated, b2b] = await Promise.all([
     prisma.conversations.count({ where: { ...base, status: 'open' } }),
     prisma.conversations.count({ where: { ...base, status: 'escalated' } }),
+    prisma.conversations.count({ where: { ...base, tags: { has: 'b2b' } } }),
   ])
-  return { open, escalated, inbox: open + escalated }
+  return { open, escalated, b2b, inbox: open + escalated }
+}
+
+export type FaqCandidate = {
+  id: string
+  conversationId: string | null
+  source: string
+  customerQuestion: string | null
+  humanAnswer: string | null
+  suggestedQuestion: string | null
+  suggestedAnswer: string | null
+  suggestedCategory: string | null
+  distilled: boolean
+  skipReason: string | null
+  status: string
+  createdAt: Date
+}
+
+export async function listFaqCandidates(opts: {
+  clientSlug?: string
+  status?: string
+}): Promise<FaqCandidate[]> {
+  const clientId = await clientIdFromSlug(opts.clientSlug)
+  const rows = await prisma.faq_candidates.findMany({
+    where: { ...(clientId ? { client_id: clientId } : {}), status: opts.status ?? 'pending' },
+    orderBy: { created_at: 'desc' },
+    take: 200,
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    conversationId: r.conversation_id,
+    source: r.source,
+    customerQuestion: r.customer_question,
+    humanAnswer: r.human_answer,
+    suggestedQuestion: r.suggested_question,
+    suggestedAnswer: r.suggested_answer,
+    suggestedCategory: r.suggested_category,
+    distilled: r.distilled,
+    skipReason: r.skip_reason,
+    status: r.status,
+    createdAt: r.created_at,
+  }))
+}
+
+export async function faqCandidateCount(clientSlug?: string): Promise<number> {
+  const clientId = await clientIdFromSlug(clientSlug)
+  return prisma.faq_candidates.count({
+    where: { ...(clientId ? { client_id: clientId } : {}), status: 'pending' },
+  })
 }

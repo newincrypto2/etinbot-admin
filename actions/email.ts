@@ -134,3 +134,32 @@ export async function removeAttachment(
   revalidatePath(`/poczta/${conversationId}`)
   return { ok: true, message: 'Załącznik usunięty.' }
 }
+
+/** Zatwierdź kandydata FAQ → dodaje do bazy wiedzy (z embeddingiem). */
+export async function approveCandidate(
+  candidateId: string,
+  payload?: { question?: string; answer?: string; category?: string },
+): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const r = await callBackend('/api/email/faq-candidate/approve', {
+    candidate_id: candidateId,
+    question: payload?.question,
+    answer: payload?.answer,
+    category: payload?.category,
+  })
+  if (!r.ok) return { ok: false, message: `Nie udało się dodać do FAQ (${r.status}). ${r.text.slice(0, 140)}` }
+  revalidatePath('/faq-nauka')
+  const action = (r.data.faq_action as string) ?? 'inserted'
+  return { ok: true, message: action === 'updated' ? 'Zaktualizowano wpis FAQ ✅' : 'Dodano do FAQ ✅' }
+}
+
+/** Odrzuć kandydata FAQ. */
+export async function rejectCandidate(candidateId: string): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const r = await callBackend('/api/email/faq-candidate/reject', { candidate_id: candidateId })
+  if (!r.ok) return { ok: false, message: `Nie udało się odrzucić (${r.status}).` }
+  revalidatePath('/faq-nauka')
+  return { ok: true, message: 'Kandydat odrzucony.' }
+}

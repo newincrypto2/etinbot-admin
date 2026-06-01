@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   AlertTriangle,
   HelpCircle,
+  GraduationCap,
   Coins,
   X,
 } from 'lucide-react'
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/products', label: 'Produkty', icon: Package },
   { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
+  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
 ]
 

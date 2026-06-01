@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package } from 'lucide-react'
+import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package, Briefcase } from 'lucide-react'
 
 import { getEmailThread, getCustomerOrders } from '@/queries/email'
 import { fmtDateTimeSec, fmtDateShort } from '@/lib/datetime'
@@ -38,7 +38,14 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
         {/* Główna kolumna */}
         <div className="space-y-5 min-w-0">
           <header>
-            <h1 className="text-2xl font-semibold text-slate-900">{thread.guestName ?? thread.guestEmail ?? 'Wątek'}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-semibold text-slate-900">{thread.guestName ?? thread.guestEmail ?? 'Wątek'}</h1>
+              {thread.tags?.includes('b2b') && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 inline-flex items-center gap-1">
+                  <Briefcase className="h-3 w-3" /> B2B / hurt
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3 mt-2 text-sm text-slate-500 flex-wrap">
               <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{thread.guestEmail ?? '—'}</span>
               <span className="inline-flex items-center gap-1.5"><Inbox className="h-3.5 w-3.5" />na {thread.inboxAddress ?? '—'}</span>

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Mail, AlertTriangle, FileText, Inbox, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Mail, AlertTriangle, FileText, Inbox, Search, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react'
 
 import { listEmailThreads, getEmailStats } from '@/queries/email'
 import { fmtDateTime } from '@/lib/datetime'
@@ -37,6 +37,7 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
     { key: 'inbox', label: 'Skrzynka' },
     { key: 'open', label: 'Otwarte' },
     { key: 'escalated', label: 'Do uwagi' },
+    { key: 'b2b', label: 'B2B / hurt' },
     { key: 'closed', label: 'Zamknięte' },
     { key: 'all', label: 'Wszystkie' },
   ]
@@ -64,10 +65,11 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Do obsłużenia" value={stats.inbox} icon={<Inbox className="h-4 w-4" />} />
         <StatCard label="Otwarte" value={stats.open} icon={<Mail className="h-4 w-4" />} colorClass="text-emerald-600" />
         <StatCard label="Do uwagi" value={stats.escalated} icon={<AlertTriangle className="h-4 w-4" />} colorClass="text-red-600" />
+        <StatCard label="B2B / hurt" value={stats.b2b} icon={<Briefcase className="h-4 w-4" />} colorClass="text-indigo-600" />
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -119,7 +121,14 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
                         <span className="font-medium text-slate-900 truncate">{r.guestName ?? r.guestEmail ?? '—'}</span>
                         <span className="text-xs text-slate-400">{r.guestEmail}</span>
                       </div>
-                      <div className="text-sm text-slate-600 truncate mt-0.5">{r.subject ?? '(bez tematu)'}</div>
+                      <div className="text-sm text-slate-600 truncate mt-0.5 flex items-center gap-2">
+                        <span className="truncate">{r.subject ?? '(bez tematu)'}</span>
+                        {r.tags?.includes('b2b') && (
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 inline-flex items-center gap-0.5">
+                            <Briefcase className="h-2.5 w-2.5" /> B2B
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] text-slate-400 mt-1">na {r.inboxAddress ?? '—'} · {fmtDateTime(r.lastMessageAt)}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
