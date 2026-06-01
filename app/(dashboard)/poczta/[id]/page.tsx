@@ -60,6 +60,7 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
 
       {/* Panel odpowiedzi */}
       <EmailReplyPanel
+        key={pendingDraft?.id ?? 'no-draft'}
         conversationId={thread.id}
         draft={
           pendingDraft
