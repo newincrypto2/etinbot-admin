@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Settings,
   MessageCircle,
+  Mail,
   LayoutDashboard,
   AlertTriangle,
   HelpCircle,
@@ -17,6 +18,7 @@ import {
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/poczta', label: 'Poczta', icon: Mail },
   { href: '/conversations', label: 'Konwersacje', icon: MessageCircle },
   { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
   { href: '/products', label: 'Produkty', icon: Package },
