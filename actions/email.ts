@@ -135,6 +135,32 @@ export async function removeAttachment(
   return { ok: true, message: 'Załącznik usunięty.' }
 }
 
+/** Rozpocznij nową konwersację mailową (compose) → tworzy draft do wysłania. */
+export async function composeEmail(input: {
+  mailboxAddress: string
+  toAddress: string
+  subject: string
+  bodyText: string
+}): Promise<EmailActionResult & { conversationId?: string }> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const slug = process.env.CLIENT_SLUG ?? 'krainaherbaty'
+  const r = await callBackend('/api/email/compose', {
+    slug,
+    mailbox_address: input.mailboxAddress,
+    to_address: input.toAddress,
+    subject: input.subject,
+    body_text: input.bodyText,
+  })
+  if (!r.ok) return { ok: false, message: `Nie udało się utworzyć (${r.status}). ${r.text.slice(0, 140)}` }
+  revalidatePath('/poczta')
+  return {
+    ok: true,
+    message: 'Utworzono — dodaj załączniki i wyślij.',
+    conversationId: r.data.conversation_id as string,
+  }
+}
+
 /** Zatwierdź kandydata FAQ → dodaje do bazy wiedzy (z embeddingiem). */
 export async function approveCandidate(
   candidateId: string,

@@ -355,3 +355,19 @@ export async function faqCandidateCount(clientSlug?: string): Promise<number> {
     where: { ...(clientId ? { client_id: clientId } : {}), status: 'pending' },
   })
 }
+
+export type Mailbox = { address: string; provider: string }
+
+/** Skrzynki tenanta z config.integrations.email_mailboxes (do compose). */
+export async function getMailboxes(clientSlug?: string): Promise<Mailbox[]> {
+  if (!clientSlug) return []
+  const c = await prisma.clients.findUnique({ where: { slug: clientSlug }, select: { config: true } })
+  const cfg = (c?.config ?? {}) as { integrations?: { email_mailboxes?: unknown } }
+  const list = cfg.integrations?.email_mailboxes
+  if (!Array.isArray(list)) return []
+  return list
+    .filter((m): m is { address: string; provider?: string } =>
+      !!m && typeof m === 'object' && typeof (m as { address?: unknown }).address === 'string',
+    )
+    .map((m) => ({ address: m.address, provider: m.provider ?? 'imap' }))
+}

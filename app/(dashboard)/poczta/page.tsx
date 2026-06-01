@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { Mail, AlertTriangle, FileText, Inbox, Search, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react'
 
-import { listEmailThreads, getEmailStats } from '@/queries/email'
+import { listEmailThreads, getEmailStats, getMailboxes } from '@/queries/email'
 import { fmtDateTime } from '@/lib/datetime'
+import { ComposeButton } from './_components/ComposeButton'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'krainaherbaty'
 
@@ -26,9 +27,10 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
   const q = params.q ?? ''
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
-  const [res, stats] = await Promise.all([
+  const [res, stats, mailboxes] = await Promise.all([
     listEmailThreads({ clientSlug: CLIENT_SLUG, view, search: q, page, pageSize: 25 }),
     getEmailStats(CLIENT_SLUG),
+    getMailboxes(CLIENT_SLUG),
   ])
   const { items, total, pageSize } = res
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -63,6 +65,7 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
             (quick-reply). Nic nie wychodzi bez Twojej akceptacji.
           </p>
         </div>
+        <ComposeButton mailboxes={mailboxes} />
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
