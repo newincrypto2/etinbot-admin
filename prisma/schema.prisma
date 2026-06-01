@@ -496,6 +496,7 @@ model email_inbound {
   snippet             String?
   is_spam             Boolean   @default(false)
   status              String    @default("received")
+  attachments         Json      @default("[]")
   received_at         DateTime  @default(now()) @db.Timestamptz(6)
 
   @@unique([client_id, provider, provider_message_id])
@@ -525,6 +526,18 @@ model email_drafts {
 
   @@index([client_id, status], map: "idx_email_drafts_status")
   @@index([conversation_id], map: "idx_email_drafts_conv")
+}
+
+model email_outbound_attachments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  draft_id   String   @db.Uuid
+  filename   String
+  mime_type  String   @default("application/octet-stream")
+  size       Int      @default(0)
+  content    Bytes
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([draft_id], map: "idx_email_outbound_att_draft")
 }
 
 enum Role {

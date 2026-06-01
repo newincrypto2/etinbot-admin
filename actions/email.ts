@@ -86,3 +86,51 @@ export async function discardDraft(
   revalidatePath(`/poczta/${conversationId}`)
   return { ok: true, message: 'Draft odrzucony.' }
 }
+
+/** Upload załącznika do draftu (multipart → backend). */
+export async function uploadAttachment(formData: FormData): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY.' }
+
+  const draftId = formData.get('draft_id')
+  const conversationId = String(formData.get('conversation_id') ?? '')
+  const file = formData.get('file')
+  if (!draftId || !(file instanceof File) || file.size === 0) {
+    return { ok: false, message: 'Brak pliku lub draftu.' }
+  }
+  const fd = new FormData()
+  fd.append('draft_id', String(draftId))
+  fd.append('file', file)
+  try {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/email/attachment/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}` },
+      body: fd,
+      cache: 'no-store',
+    })
+    if (!res.ok) {
+      const t = await res.text().catch(() => '')
+      return { ok: false, message: `Upload nie powiódł się (${res.status}). ${t.slice(0, 120)}` }
+    }
+  } catch (e) {
+    return { ok: false, message: `Błąd uploadu: ${e instanceof Error ? e.message : String(e)}` }
+  }
+  revalidatePath(`/poczta/${conversationId}`)
+  return { ok: true, message: 'Załącznik dodany.' }
+}
+
+/** Usuń załącznik wychodzący (przed wysłaniem). */
+export async function removeAttachment(
+  attachmentId: string,
+  conversationId: string,
+): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const r = await callBackend('/api/email/attachment/remove', { attachment_id: attachmentId })
+  if (!r.ok) return { ok: false, message: `Nie udało się usunąć (${r.status}).` }
+  revalidatePath(`/poczta/${conversationId}`)
+  return { ok: true, message: 'Załącznik usunięty.' }
+}
