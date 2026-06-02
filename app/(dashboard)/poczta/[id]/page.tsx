@@ -5,6 +5,7 @@ import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Packa
 import { getEmailThread, getCustomerOrders } from '@/queries/email'
 import { fmtDateTimeSec, fmtDateShort } from '@/lib/datetime'
 import { EmailReplyPanel } from './_components/EmailReplyPanel'
+import { ThreadActions } from './_components/ThreadActions'
 
 const ROLE_LABEL: Record<string, { label: string; color: string }> = {
   user: { label: 'Klient', color: 'bg-blue-50 border-blue-200 text-blue-900' },
@@ -37,7 +38,8 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
       <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
         {/* Główna kolumna */}
         <div className="space-y-5 min-w-0">
-          <header>
+          <header className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-semibold text-slate-900">{thread.guestName ?? thread.guestEmail ?? 'Wątek'}</h1>
               {thread.tags?.includes('b2b') && (
@@ -50,6 +52,8 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
               <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{thread.guestEmail ?? '—'}</span>
               <span className="inline-flex items-center gap-1.5"><Inbox className="h-3.5 w-3.5" />na {thread.inboxAddress ?? '—'}</span>
             </div>
+            </div>
+            <ThreadActions id={thread.id} status={thread.status} tags={thread.tags ?? []} />
           </header>
 
           {thread.inboundAttachments.length > 0 && (

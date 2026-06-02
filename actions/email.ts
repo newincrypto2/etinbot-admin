@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { prisma } from '@/lib/prisma'
 
 export type EmailActionResult = { ok: boolean; message: string; draftId?: string }
 
@@ -133,6 +134,47 @@ export async function removeAttachment(
   if (!r.ok) return { ok: false, message: `Nie udało się usunąć (${r.status}).` }
   revalidatePath(`/poczta/${conversationId}`)
   return { ok: true, message: 'Załącznik usunięty.' }
+}
+
+async function addTag(id: string, tag: string): Promise<string[]> {
+  const conv = await prisma.conversations.findUnique({ where: { id }, select: { tags: true } })
+  return Array.from(new Set([...(conv?.tags ?? []), tag]))
+}
+
+/** Zamknij / otwórz ponownie wątek mailowy. */
+export async function setEmailThreadClosed(id: string, closed: boolean): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  await prisma.conversations.update({
+    where: { id },
+    data: closed ? { status: 'closed', closed_at: new Date() } : { status: 'open', closed_at: null },
+  })
+  revalidatePath(`/poczta/${id}`)
+  revalidatePath('/poczta')
+  return { ok: true, message: closed ? 'Wątek zamknięty.' : 'Wątek otwarty ponownie.' }
+}
+
+/** Oznacz wątek jako B2B / hurt (tag). */
+export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  await prisma.conversations.update({ where: { id }, data: { tags: await addTag(id, 'b2b') } })
+  revalidatePath(`/poczta/${id}`)
+  revalidatePath('/poczta')
+  return { ok: true, message: 'Oznaczono jako B2B / hurt.' }
+}
+
+/** Oznacz wątek jako spam → tag 'spam' + zamknięcie (znika ze skrzynki). */
+export async function markEmailThreadSpam(id: string): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  await prisma.conversations.update({
+    where: { id },
+    data: { status: 'closed', closed_at: new Date(), tags: await addTag(id, 'spam') },
+  })
+  revalidatePath(`/poczta/${id}`)
+  revalidatePath('/poczta')
+  return { ok: true, message: 'Oznaczono jako spam i zamknięto.' }
 }
 
 /** Rozpocznij nową konwersację mailową (compose) → tworzy draft do wysłania. */
