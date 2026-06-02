@@ -30,13 +30,43 @@ export function ThreadActions({
       router.refresh()
     })
 
+  const onClose = () => {
+    if (closed) {
+      run(() => setEmailThreadClosed(id, false)) // otwórz ponownie → zostań na wątku
+      return
+    }
+    startTransition(async () => {
+      const r = await setEmailThreadClosed(id, true)
+      if (r.ok) {
+        toast.success(r.message)
+        router.push('/poczta') // po zamknięciu → główny widok poczty
+      } else {
+        toast.error(r.message)
+      }
+    })
+  }
+
+  const onSpam = () => {
+    if (!confirm('Oznaczyć jako spam? Nadawca trafi do filtra, a podobne maile będą odfiltrowywane automatycznie.'))
+      return
+    startTransition(async () => {
+      const r = await markEmailThreadSpam(id)
+      if (r.ok) {
+        toast.success(r.message)
+        router.push('/poczta')
+      } else {
+        toast.error(r.message)
+      }
+    })
+  }
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <Button
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => run(() => setEmailThreadClosed(id, !closed))}
+        onClick={onClose}
         className="gap-1.5"
       >
         {closed ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
@@ -56,9 +86,7 @@ export function ThreadActions({
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm('Oznaczyć wątek jako spam i zamknąć?')) run(() => markEmailThreadSpam(id))
-        }}
+        onClick={onSpam}
         className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
       >
         <ShieldAlert className="h-4 w-4" />

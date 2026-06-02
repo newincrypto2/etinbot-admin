@@ -5,7 +5,25 @@ import { revalidatePath } from 'next/cache'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
-export type EmailActionResult = { ok: boolean; message: string; draftId?: string }
+export type EmailActionResult = { ok: boolean; message: string; draftId?: string; redirect?: boolean }
+
+const FREEMAIL = new Set([
+  'gmail.com', 'googlemail.com', 'wp.pl', 'onet.pl', 'poczta.onet.pl', 'o2.pl', 'go2.pl',
+  'interia.pl', 'interia.eu', 'gazeta.pl', 'op.pl', 'poczta.fm', 'vp.pl', 'tlen.pl',
+  'yahoo.com', 'yahoo.pl', 'hotmail.com', 'hotmail.co.uk', 'outlook.com', 'live.com',
+  'icloud.com', 'me.com', 'proton.me', 'protonmail.com', 'gmx.com', 'gmx.de', 'aol.com',
+])
+
+function coerceObj(v: unknown): Record<string, unknown> {
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+}
 
 async function callBackend(
   path: string,
@@ -164,17 +182,62 @@ export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> 
   return { ok: true, message: 'Oznaczono jako B2B / hurt.' }
 }
 
-/** Oznacz wątek jako spam → tag 'spam' + zamknięcie (znika ze skrzynki). */
+/**
+ * Oznacz wątek jako spam — działa jak filtr i ROZSZERZA go:
+ * 1. dodaje nadawcę do filtra tenanta (freemail → adres, firmowa domena → domena),
+ * 2. konwertuje wiadomości wątku w rekord odfiltrowany (pokazuje się w „Spam / filtr"),
+ * 3. usuwa wątek ze skrzynki. Przyszłe maile od nadawcy lecą automatycznie w spam.
+ */
 export async function markEmailThreadSpam(id: string): Promise<EmailActionResult> {
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
-  await prisma.conversations.update({
-    where: { id },
-    data: { status: 'closed', closed_at: new Date(), tags: await addTag(id, 'spam') },
+
+  const conv = await prisma.conversations.findUnique({ where: { id }, select: { client_id: true } })
+  if (!conv) return { ok: false, message: 'Wątek nie istnieje.' }
+
+  // Realny NADAWCA z wiadomości przychodzącej (przy compose guest_email = odbiorca!)
+  const inbound = await prisma.email_inbound.findFirst({
+    where: { conversation_id: id },
+    orderBy: { received_at: 'desc' },
+    select: { from_address: true },
   })
-  revalidatePath(`/poczta/${id}`)
+  const sender = (inbound?.from_address ?? '').toLowerCase().trim()
+
+  let learned = ''
+  if (sender.includes('@')) {
+    const domain = sender.split('@')[1]
+    const client = await prisma.clients.findUnique({ where: { id: conv.client_id }, select: { config: true } })
+    const cfg = coerceObj(client?.config)
+    const integ = coerceObj(cfg.integrations)
+    const es = coerceObj(integ.email_spam)
+    if (FREEMAIL.has(domain)) {
+      const arr = Array.isArray(es.addresses) ? (es.addresses as string[]) : []
+      es.addresses = Array.from(new Set([...arr, sender]))
+      learned = sender
+    } else {
+      const arr = Array.isArray(es.domains) ? (es.domains as string[]) : []
+      es.domains = Array.from(new Set([...arr, domain]))
+      learned = domain
+    }
+    integ.email_spam = es
+    cfg.integrations = integ
+    await prisma.clients.update({ where: { id: conv.client_id }, data: { config: cfg as object } })
+  }
+
+  // Konwersja inbound → rekord odfiltrowany (widoczny w „Spam / filtr") + odpięcie od wątku
+  await prisma.email_inbound.updateMany({
+    where: { conversation_id: id },
+    data: { status: 'skipped_spam', is_spam: true, skip_reason: 'oznaczone ręcznie', conversation_id: null },
+  })
+  // Usuń wątek (cascade: messages, drafts; email_inbound już odpięte → zostaje)
+  await prisma.conversations.delete({ where: { id } })
+
   revalidatePath('/poczta')
-  return { ok: true, message: 'Oznaczono jako spam i zamknięto.' }
+  return {
+    ok: true,
+    message: learned ? `Spam — dodano do filtra (${learned}).` : 'Oznaczono jako spam.',
+    redirect: true,
+  }
 }
 
 /** Rozpocznij nową konwersację mailową (compose) → tworzy draft do wysłania. */

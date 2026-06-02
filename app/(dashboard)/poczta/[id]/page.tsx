@@ -136,12 +136,25 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                 {orders.map((o) => (
                   <li key={o.extId} className="text-sm border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-900">#{o.shopOrderId ?? o.extId}</span>
+                      <a
+                        href={`https://panel.baselinker.com/orders.php#order:${o.extId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-indigo-600 hover:underline"
+                        title="Otwórz w BaseLinker"
+                      >
+                        #{o.shopOrderId ?? o.extId}
+                      </a>
                       {o.total != null && (
                         <span className="text-slate-700">{o.total.toFixed(2)} {o.currency ?? 'PLN'}</span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{o.status ?? '—'}{o.dateAdd ? ` · ${fmtDateShort(o.dateAdd)}` : ''}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        {o.status ?? '—'}
+                      </span>
+                      {o.dateAdd && <span className="text-[11px] text-slate-400">{fmtDateShort(o.dateAdd)}</span>}
+                    </div>
                     <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                       {o.itemCount != null && <span className="inline-flex items-center gap-1"><Package className="h-3 w-3" />{o.itemCount} poz.</span>}
                       {o.deliveryMethod && <span>{o.deliveryMethod}</span>}
