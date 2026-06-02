@@ -210,7 +210,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
   ])
 
   const inboundAttachments: EmailAttachment[] = inboundRows.flatMap((r) =>
-    (Array.isArray(r.attachments) ? (r.attachments as Record<string, unknown>[]) : []).map((a) => ({
+    coerceArr(r.attachments).map((a) => ({
       inboundId: r.id,
       attId: (a.att_id as string) ?? null,
       filename: (a.filename as string) ?? 'załącznik',
@@ -419,6 +419,19 @@ export async function faqCandidateCount(clientSlug?: string): Promise<number> {
 export type Mailbox = { address: string; provider: string }
 
 /** Skrzynki tenanta z config.integrations.email_mailboxes (do compose). */
+function coerceArr(v: unknown): Record<string, unknown>[] {
+  // driver adapter Prismy bywa zwraca jsonb jako STRING → parsujemy
+  if (typeof v === 'string') {
+    try {
+      const p = JSON.parse(v)
+      return Array.isArray(p) ? (p as Record<string, unknown>[]) : []
+    } catch {
+      return []
+    }
+  }
+  return Array.isArray(v) ? (v as Record<string, unknown>[]) : []
+}
+
 function coerceObj(v: unknown): Record<string, unknown> {
   if (typeof v === 'string') {
     try {
