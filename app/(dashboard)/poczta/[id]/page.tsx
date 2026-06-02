@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package, Briefcase } from 'lucide-react'
 
 import { getEmailThread, getCustomerOrders } from '@/queries/email'
-import { fmtDateTimeSec, fmtDateShort } from '@/lib/datetime'
+import { fmtFullDateTime, fmtDateShort } from '@/lib/datetime'
 import { EmailReplyPanel } from './_components/EmailReplyPanel'
 import { ThreadActions } from './_components/ThreadActions'
 
@@ -74,7 +74,7 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                 <div key={i} className={`rounded-lg border p-4 ${role.color}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wide opacity-70">{role.label}</span>
-                    <span className="text-[11px] opacity-60">{fmtDateTimeSec(m.createdAt)}</span>
+                    <span className="text-[11px] opacity-60">{fmtFullDateTime(m.createdAt)}</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</div>
                   {attachments.length > 0 && (
