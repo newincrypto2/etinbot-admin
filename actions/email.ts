@@ -3,7 +3,20 @@
 import { revalidatePath } from 'next/cache'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+
+/** Imię i nazwisko zalogowanego użytkownika (do podpisu maila). */
+async function currentUserName(): Promise<string | undefined> {
+  const session = await auth()
+  if (session?.user?.name) return session.user.name
+  const email = session?.user?.email
+  if (email) {
+    const u = await prisma.adminUser.findUnique({ where: { email }, select: { name: true } })
+    return u?.name ?? undefined
+  }
+  return undefined
+}
 
 export type EmailActionResult = { ok: boolean; message: string; draftId?: string; redirect?: boolean }
 
@@ -59,7 +72,8 @@ export async function sendDraft(
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
 
-  const r = await callBackend('/api/email/send', { draft_id: draftId, body_text: bodyText })
+  const signer = await currentUserName()
+  const r = await callBackend('/api/email/send', { draft_id: draftId, body_text: bodyText, signer_name: signer })
   if (!r.ok) {
     return { ok: false, message: `Wysyłka nie powiodła się (${r.status}). ${r.text.slice(0, 160)}` }
   }
@@ -81,9 +95,11 @@ export async function wrapQuickReply(
   if (!guard.ok) return { ok: false, message: guard.message }
   if (!coreText.trim()) return { ok: false, message: 'Wpisz rdzeń odpowiedzi.' }
 
+  const signer = await currentUserName()
   const r = await callBackend('/api/email/wrap', {
     conversation_id: conversationId,
     core_text: coreText,
+    signer_name: signer,
   })
   if (!r.ok) {
     return { ok: false, message: `Nie udało się wygenerować draftu (${r.status}). ${r.text.slice(0, 160)}` }

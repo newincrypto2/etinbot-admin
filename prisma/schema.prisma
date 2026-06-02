@@ -300,7 +300,7 @@ model AdminUser {
   email        String   @unique
   name         String
   passwordHash String
-  role         Role     @default(VIEWER)
+  role         String   @default("VIEWER")
   isActive     Boolean  @default(true)
   clientId     String?  @db.Uuid
   createdAt    DateTime @default(now())
