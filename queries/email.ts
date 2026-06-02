@@ -164,7 +164,8 @@ export type EmailThreadDetail = {
   inboxAddress: string | null
   tags: string[]
   messages: { role: string; content: string; createdAt: Date }[]
-  inboundAttachments: EmailAttachment[]
+  // załączniki per wiadomość przychodząca (kolejność = kolejność wiadomości user)
+  inbounds: { id: string; receivedAt: Date; attachments: EmailAttachment[] }[]
   drafts: {
     id: string
     subject: string
@@ -205,12 +206,14 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
     prisma.email_inbound.findMany({
       where: { conversation_id: id },
       orderBy: { received_at: 'asc' },
-      select: { id: true, attachments: true },
+      select: { id: true, attachments: true, received_at: true },
     }),
   ])
 
-  const inboundAttachments: EmailAttachment[] = inboundRows.flatMap((r) =>
-    coerceArr(r.attachments).map((a) => ({
+  const inbounds = inboundRows.map((r) => ({
+    id: r.id,
+    receivedAt: r.received_at,
+    attachments: coerceArr(r.attachments).map((a) => ({
       inboundId: r.id,
       attId: (a.att_id as string) ?? null,
       filename: (a.filename as string) ?? 'załącznik',
@@ -218,7 +221,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
       size: (a.size as number) ?? 0,
       downloadable: !!a.att_id,
     })),
-  )
+  }))
 
   const draftIds = drafts.map((d) => d.id)
   const outAtt = draftIds.length
@@ -243,7 +246,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
     inboxAddress: conv.inbox_address,
     tags: conv.tags ?? [],
     messages: messages.map((m) => ({ role: m.role, content: m.content, createdAt: m.created_at })),
-    inboundAttachments,
+    inbounds,
     drafts: drafts.map((d) => ({
       id: d.id,
       subject: d.subject,

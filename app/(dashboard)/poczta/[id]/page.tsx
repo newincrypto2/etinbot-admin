@@ -28,6 +28,15 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
   const orders = await getCustomerOrders(thread.clientId, thread.guestEmail)
   const pendingDraft = [...thread.drafts].reverse().find((d) => d.status === 'draft') ?? null
 
+  // Załączniki per wiadomość — N-ta wiadomość 'user' = N-ty inbound (ta sama kolejność)
+  let _ui = 0
+  const msgRows = thread.messages
+    .filter((m) => m.role !== 'tool')
+    .map((m) => ({
+      m,
+      attachments: m.role === 'user' ? thread.inbounds[_ui++]?.attachments ?? [] : [],
+    }))
+
   return (
     <div className="max-w-6xl space-y-6">
       <Link href="/poczta" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
@@ -56,40 +65,10 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
             <ThreadActions id={thread.id} status={thread.status} tags={thread.tags ?? []} />
           </header>
 
-          {thread.inboundAttachments.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="text-xs font-semibold text-slate-500 mb-2 inline-flex items-center gap-1.5">
-                <Paperclip className="h-3.5 w-3.5" /> Załączniki od klienta
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {thread.inboundAttachments.map((a, i) =>
-                  a.downloadable ? (
-                    <a
-                      key={i}
-                      href={`/api/email-attachment?inbound_id=${a.inboundId}&att_id=${encodeURIComponent(a.attId ?? '')}`}
-                      target="_blank"
-                      className="inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700"
-                    >
-                      <Download className="h-3.5 w-3.5 text-slate-500" />
-                      {a.filename}
-                      <span className="text-[11px] text-slate-400">{fmtBytes(a.size)}</span>
-                    </a>
-                  ) : (
-                    <span key={i} className="inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-400" title="Pobieranie dostępne wkrótce">
-                      <Paperclip className="h-3.5 w-3.5" />
-                      {a.filename}
-                    </span>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Historia wątku */}
+          {/* Historia wątku — załączniki pod każdą wiadomością klienta */}
           <div className="space-y-3">
-            {thread.messages.length === 0 && <div className="text-sm text-slate-400">Brak wiadomości.</div>}
-            {thread.messages.map((m, i) => {
-              if (m.role === 'tool') return null
+            {msgRows.length === 0 && <div className="text-sm text-slate-400">Brak wiadomości.</div>}
+            {msgRows.map(({ m, attachments }, i) => {
               const role = ROLE_LABEL[m.role] ?? ROLE_LABEL.system
               return (
                 <div key={i} className={`rounded-lg border p-4 ${role.color}`}>
@@ -98,6 +77,34 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                     <span className="text-[11px] opacity-60">{fmtDateTimeSec(m.createdAt)}</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                  {attachments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-black/5">
+                      <div className="text-[11px] font-semibold opacity-60 mb-1.5 inline-flex items-center gap-1">
+                        <Paperclip className="h-3 w-3" /> Załączniki
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {attachments.map((a, j) =>
+                          a.downloadable ? (
+                            <a
+                              key={j}
+                              href={`/api/email-attachment?inbound_id=${a.inboundId}&att_id=${encodeURIComponent(a.attId ?? '')}`}
+                              target="_blank"
+                              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                            >
+                              <Download className="h-3.5 w-3.5 text-slate-500" />
+                              {a.filename}
+                              <span className="text-[11px] text-slate-400">{fmtBytes(a.size)}</span>
+                            </a>
+                          ) : (
+                            <span key={j} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-400">
+                              <Paperclip className="h-3.5 w-3.5" />
+                              {a.filename}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
