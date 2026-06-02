@@ -359,11 +359,24 @@ export async function faqCandidateCount(clientSlug?: string): Promise<number> {
 export type Mailbox = { address: string; provider: string }
 
 /** Skrzynki tenanta z config.integrations.email_mailboxes (do compose). */
+function coerceObj(v: unknown): Record<string, unknown> {
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+}
+
 export async function getMailboxes(clientSlug?: string): Promise<Mailbox[]> {
   if (!clientSlug) return []
   const c = await prisma.clients.findUnique({ where: { slug: clientSlug }, select: { config: true } })
-  const cfg = (c?.config ?? {}) as { integrations?: { email_mailboxes?: unknown } }
-  const list = cfg.integrations?.email_mailboxes
+  // config / integrations bywają double-encoded (string w jsonb) → coerce
+  const cfg = coerceObj(c?.config)
+  const integ = coerceObj(cfg.integrations)
+  const list = integ.email_mailboxes
   if (!Array.isArray(list)) return []
   return list
     .filter((m): m is { address: string; provider?: string } =>
