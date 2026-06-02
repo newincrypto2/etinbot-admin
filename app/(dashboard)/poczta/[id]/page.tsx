@@ -29,12 +29,25 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
   const pendingDraft = [...thread.drafts].reverse().find((d) => d.status === 'draft') ?? null
 
   // Załączniki per wiadomość — N-ta wiadomość 'user' = N-ty inbound (ta sama kolejność)
+  // Dla wiadomości wysłanych (assistant) doklejamy załączniki wysłanego draftu
+  // (dopasowanie po treści) — żeby było widać, że odpowiedź miała załącznik.
+  const norm = (s: string) => (s ?? '').replace(/\s+/g, ' ').trim()
+  const sentAtt = new Map<string, typeof thread.drafts[number]['attachments']>()
+  for (const d of thread.drafts) {
+    if (d.status === 'sent' && d.attachments.length) {
+      const k = norm(d.bodyText ?? '')
+      if (k && !sentAtt.has(k)) sentAtt.set(k, d.attachments)
+    }
+  }
   let _ui = 0
   const msgRows = thread.messages
     .filter((m) => m.role !== 'tool')
     .map((m) => ({
       m,
-      attachments: m.role === 'user' ? thread.inbounds[_ui++]?.attachments ?? [] : [],
+      attachments:
+        m.role === 'user'
+          ? thread.inbounds[_ui++]?.attachments ?? []
+          : (sentAtt.get(norm(m.content)) ?? []).map((a) => ({ ...a, downloadable: false })),
     }))
 
   return (
