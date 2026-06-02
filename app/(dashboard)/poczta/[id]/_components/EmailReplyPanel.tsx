@@ -60,10 +60,16 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
   const onWrap = () => run(() => wrapQuickReply(conversationId, core))
   const onRemoveAtt = (attId?: string) => attId && run(() => removeAttachment(attId, conversationId))
 
+  const MAX_ATTACHMENT_MB = 20
   const onPickFile = () => {
     if (!draft) return
     const file = fileRef.current?.files?.[0]
     if (!file) return
+    if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+      toast.error(`Plik za duży (${fmtBytes(file.size)}). Maksymalny rozmiar załącznika to ${MAX_ATTACHMENT_MB} MB.`)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
     const fd = new FormData()
     fd.append('draft_id', draft.id)
     fd.append('conversation_id', conversationId)
