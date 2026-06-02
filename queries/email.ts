@@ -95,7 +95,7 @@ export async function listEmailThreads(opts: {
       prisma.email_drafts.findMany({
         where: { conversation_id: { in: ids } },
         orderBy: { created_at: 'desc' },
-        select: { id: true, conversation_id: true, status: true, origin: true, escalated: true },
+        select: { id: true, conversation_id: true, status: true, origin: true, escalated: true, subject: true },
       }),
       prisma.email_inbound.findMany({
         where: { conversation_id: { in: ids } },
@@ -118,7 +118,7 @@ export async function listEmailThreads(opts: {
         guestEmail: c.guest_email,
         guestName: c.guest_name,
         inboxAddress: c.inbox_address,
-        subject: lastSubject.get(c.id) ?? null,
+        subject: lastSubject.get(c.id) ?? lastDraft.get(c.id)?.subject ?? null,
         lastMessageAt: c.last_message_at,
         draftId: d?.id ?? null,
         draftStatus: d?.status ?? null,
