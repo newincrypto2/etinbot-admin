@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { Mail, AlertTriangle, FileText, Inbox, Search, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react'
+import { Mail, AlertTriangle, FileText, Inbox, Search, ChevronLeft, ChevronRight, Briefcase, Shield } from 'lucide-react'
 
-import { listEmailThreads, getEmailStats, getMailboxes } from '@/queries/email'
+import { listEmailThreads, getEmailStats, getMailboxes, listFilteredMails } from '@/queries/email'
 import { fmtDateTime } from '@/lib/datetime'
 import { ComposeButton } from './_components/ComposeButton'
 
@@ -27,10 +27,12 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
   const q = params.q ?? ''
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
-  const [res, stats, mailboxes] = await Promise.all([
-    listEmailThreads({ clientSlug: CLIENT_SLUG, view, search: q, page, pageSize: 25 }),
+  const isSpamView = view === 'spam'
+  const [res, stats, mailboxes, filtered] = await Promise.all([
+    listEmailThreads({ clientSlug: CLIENT_SLUG, view: isSpamView ? 'inbox' : view, search: q, page, pageSize: 25 }),
     getEmailStats(CLIENT_SLUG),
     getMailboxes(CLIENT_SLUG),
+    isSpamView ? listFilteredMails({ clientSlug: CLIENT_SLUG, limit: 200 }) : Promise.resolve([]),
   ])
   const { items, total, pageSize } = res
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -42,6 +44,7 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
     { key: 'b2b', label: 'B2B / hurt' },
     { key: 'closed', label: 'Zamknięte' },
     { key: 'all', label: 'Wszystkie' },
+    { key: 'spam', label: 'Spam / filtr' },
   ]
   const qs = (overrides: Record<string, string>) => {
     const p = new URLSearchParams()
@@ -103,6 +106,48 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
         </form>
       </div>
 
+      {isSpamView ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500">
+            Wiadomości odfiltrowane przez filtr (spam / automaty / pętle) — nie trafiły do skrzynki.
+            Przeglądaj okresowo, czy nic wartościowego nie zostało odrzucone. {filtered.length} pozycji.
+          </p>
+          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            {filtered.length === 0 ? (
+              <div className="p-10 text-center text-sm text-slate-500">Brak odfiltrowanych wiadomości.</div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {filtered.map((m) => (
+                  <li key={m.id} className="flex items-start gap-3 px-4 py-3">
+                    <div className="mt-0.5 h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                      <Shield className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-slate-800 truncate">{m.fromName || m.fromAddress || '—'}</span>
+                        <span className="text-xs text-slate-400 truncate">{m.fromAddress}</span>
+                      </div>
+                      <div className="text-sm text-slate-600 truncate mt-0.5">{m.subject || '(bez tematu)'}</div>
+                      {m.snippet && <div className="text-[11px] text-slate-400 truncate mt-0.5">{m.snippet}</div>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${m.isSpam ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {m.isSpam ? 'spam' : 'automat / pętla'}
+                      </span>
+                      {m.reason && (
+                        <span className="text-[10px] text-slate-400 max-w-[220px] truncate" title={m.reason}>
+                          {m.reason}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-300">{fmtDateTime(m.receivedAt)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
         {items.length === 0 ? (
           <div className="p-10 text-center text-sm text-slate-500">
@@ -150,8 +195,9 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
           </ul>
         )}
       </div>
+      )}
 
-      {total > pageSize && (
+      {!isSpamView && total > pageSize && (
         <div className="flex items-center justify-between text-sm text-slate-600">
           <span>
             {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} z {total}

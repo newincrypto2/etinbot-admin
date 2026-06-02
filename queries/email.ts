@@ -349,6 +349,66 @@ export async function listFaqCandidates(opts: {
   }))
 }
 
+export type FilteredMail = {
+  id: string
+  fromAddress: string | null
+  fromName: string | null
+  subject: string | null
+  snippet: string | null
+  isSpam: boolean
+  status: string // skipped_spam | skipped_loop
+  reason: string | null
+  receivedAt: Date
+}
+
+/** Maile odfiltrowane przez spam/loop filtr (do weryfikacji poprawności filtra). */
+export async function listFilteredMails(opts: {
+  clientSlug?: string
+  limit?: number
+}): Promise<FilteredMail[]> {
+  const clientId = await clientIdFromSlug(opts.clientSlug)
+  const rows = await prisma.email_inbound.findMany({
+    where: {
+      ...(clientId ? { client_id: clientId } : {}),
+      status: { in: ['skipped_spam', 'skipped_loop'] },
+    },
+    orderBy: { received_at: 'desc' },
+    take: opts.limit ?? 200,
+    select: {
+      id: true,
+      from_address: true,
+      from_name: true,
+      subject: true,
+      snippet: true,
+      is_spam: true,
+      status: true,
+      skip_reason: true,
+      received_at: true,
+    },
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    fromAddress: r.from_address,
+    fromName: r.from_name,
+    subject: r.subject,
+    snippet: r.snippet,
+    isSpam: r.is_spam,
+    status: r.status,
+    reason: r.skip_reason,
+    receivedAt: r.received_at,
+  }))
+}
+
+export async function filteredMailCount(clientSlug?: string): Promise<number> {
+  const clientId = await clientIdFromSlug(clientSlug)
+  return prisma.email_inbound.count({
+    where: {
+      ...(clientId ? { client_id: clientId } : {}),
+      status: { in: ['skipped_spam', 'skipped_loop'] },
+    },
+  })
+}
+
 export async function faqCandidateCount(clientSlug?: string): Promise<number> {
   const clientId = await clientIdFromSlug(clientSlug)
   return prisma.faq_candidates.count({
