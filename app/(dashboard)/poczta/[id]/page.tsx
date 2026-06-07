@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package, Briefcase } from 'lucide-react'
 
-import { getEmailThread, getCustomerOrders } from '@/queries/email'
+import { getEmailThread, getCustomerOrders, getShipmentStatus, type ShipmentStatus } from '@/queries/email'
 import { fmtFullDateTime, fmtDateShort } from '@/lib/datetime'
 import { EmailReplyPanel } from './_components/EmailReplyPanel'
 import { ThreadActions } from './_components/ThreadActions'
@@ -20,12 +20,31 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
+// Kolor badge'a statusu przesyłki wg rodzaju (z backendu /api/tools/check_shipment)
+function shipBadge(kind: string): string {
+  if (kind === 'delivered') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (kind === 'returned' || kind === 'problem' || kind === 'lost') return 'bg-rose-50 text-rose-700 border-rose-200'
+  if (kind === 'awaiting_pickup') return 'bg-amber-50 text-amber-700 border-amber-200'
+  return 'bg-sky-50 text-sky-700 border-sky-200' // in_transit / created / unknown
+}
+
 export default async function PocztaThreadPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
   const thread = await getEmailThread(id)
   if (!thread) notFound()
 
   const orders = await getCustomerOrders(thread.clientId, thread.guestEmail)
+  // Live status przesyłki (BaseLinker) dla zamówień z numerem nadania — równolegle, cap 5
+  const shipMap = new Map<string, ShipmentStatus | null>()
+  await Promise.all(
+    orders
+      .slice(0, 5)
+      .filter((o) => o.trackingNumber)
+      .map(async (o) => {
+        const s = await getShipmentStatus(thread.clientSlug, o.shopOrderId ?? o.extId, thread.guestEmail)
+        shipMap.set(o.extId, s)
+      }),
+  )
   const pendingDraft = [...thread.drafts].reverse().find((d) => d.status === 'draft') ?? null
 
   // Załączniki per wiadomość — N-ta wiadomość 'user' = N-ty inbound (ta sama kolejność)
@@ -175,6 +194,17 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                       </span>
                       {o.dateAdd && <span className="text-[11px] text-slate-400">{fmtDateShort(o.dateAdd)}</span>}
                     </div>
+                    {(() => {
+                      const s = shipMap.get(o.extId)
+                      return s ? (
+                        <div className="mt-1.5">
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${shipBadge(s.kind)}`}>
+                            <Truck className="h-3 w-3" /> Przesyłka: {s.status}
+                            {s.statusDate ? ` · ${s.statusDate}` : ''}
+                          </span>
+                        </div>
+                      ) : null
+                    })()}
                     <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                       {o.itemCount != null && <span className="inline-flex items-center gap-1"><Package className="h-3 w-3" />{o.itemCount} poz.</span>}
                       {o.deliveryMethod && <span>{o.deliveryMethod}</span>}

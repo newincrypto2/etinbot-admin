@@ -155,9 +155,18 @@ export type CustomerOrder = {
   itemCount: number | null
 }
 
+export type ShipmentStatus = {
+  status: string
+  kind: string
+  statusDate: string | null
+  trackingUrl: string | null
+  courier: string | null
+}
+
 export type EmailThreadDetail = {
   id: string
   clientId: string
+  clientSlug: string
   status: string
   guestEmail: string | null
   guestName: string | null
@@ -195,6 +204,11 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
     },
   })
   if (!conv) return null
+
+  const cl = await prisma.clients.findUnique({
+    where: { id: conv.client_id },
+    select: { slug: true },
+  })
 
   const [messages, drafts, inboundRows] = await Promise.all([
     prisma.messages.findMany({
@@ -240,6 +254,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
   return {
     id: conv.id,
     clientId: conv.client_id,
+    clientSlug: cl?.slug ?? '',
     status: conv.status,
     guestEmail: conv.guest_email,
     guestName: conv.guest_name,
@@ -260,6 +275,43 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
       sentAt: d.sent_at,
       attachments: attByDraft.get(d.id) ?? [],
     })),
+  }
+}
+
+/** Live status przesyłki z backendu (BaseLinker) dla pojedynczego zamówienia.
+ * caller_email = adres klienta z wątku → przechodzi weryfikację tożsamości (anty-IDOR). */
+export async function getShipmentStatus(
+  slug: string,
+  orderNumber: string,
+  guestEmail: string | null,
+): Promise<ShipmentStatus | null> {
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key || !orderNumber) return null
+  try {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/tools/check_shipment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        order_id: orderNumber,
+        client_slug: slug,
+        caller_email: guestEmail ?? undefined,
+      }),
+    })
+    if (!res.ok) return null
+    const d = await res.json()
+    const p = Array.isArray(d?.packages) ? d.packages[0] : null
+    if (!d?.has_shipment || !p) return null
+    return {
+      status: p.status ?? '',
+      kind: p.status_kind ?? 'unknown',
+      statusDate: p.status_date ?? null,
+      trackingUrl: p.tracking_url ?? null,
+      courier: p.courier ?? null,
+    }
+  } catch {
+    return null
   }
 }
 
