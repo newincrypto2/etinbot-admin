@@ -64,6 +64,33 @@ async function callBackend(
 }
 
 /** Wyślij zatwierdzony draft (opcjonalnie z edytowaną treścią). */
+/** Pełna treść odfiltrowanej (spam/loop) wiadomości — dofetch z backendu. */
+export async function readFilteredMail(
+  inboundId: string,
+): Promise<{ ok: boolean; subject?: string; from?: string; body?: string; message?: string }> {
+  const guard = await assertRoleOrFail('VIEWER')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY.' }
+  try {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/email/filtered/${inboundId}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: 'no-store',
+    })
+    if (!res.ok) return { ok: false, message: `Nie udało się pobrać treści (${res.status}).` }
+    const d = await res.json()
+    return {
+      ok: true,
+      subject: d.subject ?? '(bez tematu)',
+      from: d.from_address ?? '',
+      body: d.body_text || '(brak treści)',
+    }
+  } catch (e) {
+    return { ok: false, message: `Błąd: ${e instanceof Error ? e.message : String(e)}` }
+  }
+}
+
 export async function sendDraft(
   draftId: string,
   conversationId: string,

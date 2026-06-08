@@ -14,6 +14,8 @@ const REASON_LABEL: Record<string, string> = {
   investment_inquiry: 'Pytanie inwestycyjne',
   billing_dispute: 'Spór o płatność',
   other_human_needed: 'Inne — wymaga człowieka',
+  auto_detected_from_response: 'Sprawa do obsługi',
+  'user request': 'Prośba klienta o człowieka',
 }
 
 type SearchParams = Promise<{ status?: 'unresolved' | 'resolved' | 'all'; reason?: string }>
