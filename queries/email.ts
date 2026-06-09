@@ -175,6 +175,7 @@ export type EmailThreadDetail = {
   guestName: string | null
   inboxAddress: string | null
   tags: string[]
+  meta: Record<string, unknown> | null
   messages: { role: string; content: string; createdAt: Date }[]
   // załączniki per wiadomość przychodząca (kolejność = kolejność wiadomości user)
   inbounds: { id: string; receivedAt: Date; attachments: EmailAttachment[] }[]
@@ -204,6 +205,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
       guest_name: true,
       inbox_address: true,
       tags: true,
+      meta: true,
     },
   })
   if (!conv) return null
@@ -263,6 +265,7 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
     guestName: conv.guest_name,
     inboxAddress: conv.inbox_address,
     tags: conv.tags ?? [],
+    meta: coerceObj(conv.meta) as Record<string, unknown> | null,
     messages: messages.map((m) => ({ role: m.role, content: m.content, createdAt: m.created_at })),
     inbounds,
     drafts: drafts.map((d) => ({
@@ -465,6 +468,63 @@ export async function filteredMailCount(clientSlug?: string): Promise<number> {
       status: { in: ['skipped_spam', 'skipped_loop'] },
     },
   })
+}
+
+export type AllegroReturnRow = {
+  id: string
+  returnId: string
+  referenceNumber: string | null
+  orderId: string | null
+  buyerLogin: string | null
+  buyerEmail: string | null
+  status: string | null
+  items: { name: string; quantity: number | null; price: string | null }[]
+  refundText: string | null
+  allegroUrl: string
+  createdAt: Date | null
+}
+
+const SALESCENTER_RETURN_URL = 'https://salescenter.allegro.com/returns/'
+
+/** Lista zwrotów Allegro (osobna strona /zwroty). */
+export async function listAllegroReturns(opts: {
+  clientSlug?: string
+  limit?: number
+}): Promise<AllegroReturnRow[]> {
+  const clientId = await clientIdFromSlug(opts.clientSlug)
+  const rows = await prisma.allegro_returns.findMany({
+    where: { ...(clientId ? { client_id: clientId } : {}) },
+    orderBy: { created_at: 'desc' },
+    take: opts.limit ?? 200,
+  })
+  return rows.map((r) => {
+    const items = coerceArr(r.items).map((it) => ({
+      name: String(it.name ?? (it.offer as Record<string, unknown>)?.name ?? 'pozycja'),
+      quantity: typeof it.quantity === 'number' ? it.quantity : null,
+      price: ((it.price as Record<string, unknown>)?.amount as string) ?? null,
+    }))
+    const refund = coerceObj(r.refund)
+    const bank = coerceObj(refund.bankAccount)
+    const refundText = bank.owner ? `przelew → ${String(bank.owner)}` : null
+    return {
+      id: r.id,
+      returnId: r.return_id,
+      referenceNumber: r.reference_number,
+      orderId: r.order_id,
+      buyerLogin: r.buyer_login,
+      buyerEmail: r.buyer_email,
+      status: r.status,
+      items,
+      refundText,
+      allegroUrl: SALESCENTER_RETURN_URL + r.return_id,
+      createdAt: r.return_created_at ?? r.created_at,
+    }
+  })
+}
+
+export async function allegroReturnsCount(clientSlug?: string): Promise<number> {
+  const clientId = await clientIdFromSlug(clientSlug)
+  return prisma.allegro_returns.count({ where: { ...(clientId ? { client_id: clientId } : {}) } })
 }
 
 export async function faqCandidateCount(clientSlug?: string): Promise<number> {

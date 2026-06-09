@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package, Briefcase } from 'lucide-react'
+import { ArrowLeft, User, Inbox, Paperclip, Download, ShoppingCart, Truck, Package, Briefcase, ExternalLink, AlertTriangle, Clock } from 'lucide-react'
 
 import { getEmailThread, getCustomerOrders, getShipmentStatus, type ShipmentStatus } from '@/queries/email'
 import { fmtFullDateTime, fmtDateShort } from '@/lib/datetime'
@@ -96,6 +96,47 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
             </div>
             <ThreadActions id={thread.id} status={thread.status} tags={thread.tags ?? []} />
           </header>
+
+          {/* Box kontekstu reklamacji/dyskusji Allegro (z conversations.meta) */}
+          {(() => {
+            const meta = thread.meta as Record<string, unknown> | null
+            if (!meta || meta.channel !== 'allegro_issue') return null
+            const isClaim = String(meta.type ?? '').toUpperCase() === 'CLAIM'
+            const exps = Array.isArray(meta.expectations) ? (meta.expectations as string[]) : []
+            const lines = Array.isArray(meta.order_lines) ? (meta.order_lines as string[]) : []
+            const url = typeof meta.allegro_url === 'string' ? meta.allegro_url : null
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-sm font-semibold text-amber-900 inline-flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                    {isClaim ? 'Reklamacja Allegro' : 'Dyskusja Allegro'}
+                    {meta.reference_number ? <span className="font-normal text-amber-700">· nr {String(meta.reference_number)}</span> : null}
+                  </div>
+                  {url && (
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+                      <ExternalLink className="h-3.5 w-3.5" /> Otwórz na Allegro
+                    </a>
+                  )}
+                </div>
+                <div className="text-sm text-amber-900 space-y-1">
+                  {meta.reason ? <div><span className="font-medium">Powód:</span> {String(meta.reason)}</div> : null}
+                  {exps.length > 0 ? <div><span className="font-medium">Oczekiwanie klienta:</span> {exps.join(', ')}</div> : null}
+                  {lines.length > 0 ? <div><span className="font-medium">Zamówienie:</span> {lines.join('; ')}{meta.order_delivery ? ` · ${String(meta.order_delivery)}` : ''}</div> : null}
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-amber-700">
+                    {meta.status ? <span>Status: {String(meta.status)}</span> : null}
+                    {meta.decision_due ? <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Termin decyzji: {fmtFullDateTime(new Date(String(meta.decision_due)))}</span> : null}
+                    {meta.right ? <span>Podstawa: {String(meta.right)}</span> : null}
+                  </div>
+                </div>
+                <p className="text-[11px] text-amber-700/80">
+                  Formalną decyzję (uznanie / odrzucenie / kwota zwrotu) podejmij na Allegro przez powyższy link.
+                  Poniższy draft służy do odpowiedzi/rozmowy z klientem.
+                </p>
+              </div>
+            )
+          })()}
 
           {/* Historia wątku — załączniki pod każdą wiadomością klienta */}
           <div className="space-y-3">

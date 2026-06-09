@@ -14,6 +14,7 @@ import {
   HelpCircle,
   GraduationCap,
   Coins,
+  Undo2,
   X,
 } from 'lucide-react'
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
   { href: '/products', label: 'Produkty', icon: Package },
   { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
+  { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2 },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
