@@ -155,7 +155,11 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-1">na {r.inboxAddress ?? '—'} · {fmtDateTime(r.lastMessageAt)}</div>
+                      <div className="text-[11px] text-slate-400 mt-1">
+                        {r.channel === 'allegro'
+                          ? <span className="text-orange-600 font-medium">Allegro</span>
+                          : `na ${r.inboxAddress ?? '—'}`} · {fmtDateTime(r.lastMessageAt)}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <span className={`text-[11px] px-2 py-0.5 rounded-full border ${st.color}`}>{st.label}</span>

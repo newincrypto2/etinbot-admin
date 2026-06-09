@@ -9,6 +9,7 @@ async function clientIdFromSlug(slug?: string): Promise<string | null> {
 export type EmailThreadRow = {
   id: string
   status: string
+  channel: string
   guestEmail: string | null
   guestName: string | null
   inboxAddress: string | null
@@ -41,7 +42,7 @@ export async function listEmailThreads(opts: {
   const pageSize = Math.min(100, opts.pageSize ?? 25)
   const clientId = await clientIdFromSlug(opts.clientSlug)
 
-  const where: Record<string, unknown> = { channel: 'email' }
+  const where: Record<string, unknown> = { channel: { in: ['email', 'allegro'] } }
   if (clientId) where.client_id = clientId
   if (opts.view === 'b2b') {
     where.tags = { has: 'b2b' }
@@ -79,6 +80,7 @@ export async function listEmailThreads(opts: {
       select: {
         id: true,
         status: true,
+        channel: true,
         guest_email: true,
         guest_name: true,
         inbox_address: true,
@@ -115,6 +117,7 @@ export async function listEmailThreads(opts: {
       items.push({
         id: c.id,
         status: c.status,
+        channel: c.channel,
         guestEmail: c.guest_email,
         guestName: c.guest_name,
         inboxAddress: c.inbox_address,
@@ -192,7 +195,7 @@ export type EmailThreadDetail = {
 
 export async function getEmailThread(id: string): Promise<EmailThreadDetail | null> {
   const conv = await prisma.conversations.findFirst({
-    where: { id, channel: 'email' },
+    where: { id, channel: { in: ['email', 'allegro'] } },
     select: {
       id: true,
       client_id: true,
@@ -353,7 +356,7 @@ export async function getCustomerOrders(clientId: string, email: string | null):
 
 export async function getEmailStats(clientSlug?: string) {
   const clientId = await clientIdFromSlug(clientSlug)
-  const base: Record<string, unknown> = { channel: 'email' }
+  const base: Record<string, unknown> = { channel: { in: ['email', 'allegro'] } }
   if (clientId) base.client_id = clientId
   const [open, escalated, b2b] = await Promise.all([
     prisma.conversations.count({ where: { ...base, status: 'open' } }),
