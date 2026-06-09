@@ -158,6 +158,8 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
                       <div className="text-[11px] text-slate-400 mt-1">
                         {r.channel === 'allegro'
                           ? <span className="text-orange-600 font-medium">Allegro</span>
+                          : r.channel === 'allegro_issue'
+                          ? <span className="text-red-600 font-medium">Allegro · reklamacja/dyskusja</span>
                           : `na ${r.inboxAddress ?? '—'}`} · {fmtDateTime(r.lastMessageAt)}
                       </div>
                     </div>
