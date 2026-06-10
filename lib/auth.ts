@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { authConfig } from '@/lib/auth.config'
+import { loginLimiter } from '@/lib/rate-limit'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -14,6 +15,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
+        // Brute-force guard — limit prób per email (in-memory, single instance)
+        const limiterKey = (credentials.email as string).toLowerCase().trim()
+        if (!loginLimiter.check(`login:${limiterKey}`).success) {
+          console.warn(`[auth] rate limit hit for login ${limiterKey}`)
+          return null
+        }
 
         const user = await prisma.adminUser.findUnique({
           where: { email: credentials.email as string },

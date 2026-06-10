@@ -48,3 +48,5 @@ export function createRateLimiter(opts: { interval: number; maxRequests: number 
 export const webhookLimiter = createRateLimiter({ interval: 60_000, maxRequests: 60 })
 export const voiceLimiter = createRateLimiter({ interval: 60_000, maxRequests: 20 })
 export const apiLimiter = createRateLimiter({ interval: 60_000, maxRequests: 100 })
+// Brute-force na logowaniu: 10 prób / 15 min per email
+export const loginLimiter = createRateLimiter({ interval: 15 * 60_000, maxRequests: 10 })

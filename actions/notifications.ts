@@ -41,7 +41,8 @@ export async function upsertEscalationRecipient(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  await assertRoleOrFail('OWNER')
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return guard
 
   const raw = {
     id: (fd.get('id') as string) || undefined,
@@ -107,7 +108,8 @@ export async function upsertEscalationRecipient(
 }
 
 export async function deleteEscalationRecipient(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  await assertRoleOrFail('OWNER')
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return guard
   const id = fd.get('id') as string
   if (!id) return { ok: false, message: 'Brak ID' }
   await prisma.escalation_recipients.delete({ where: { id } })
@@ -116,7 +118,8 @@ export async function deleteEscalationRecipient(_prev: ActionResult, fd: FormDat
 }
 
 export async function toggleEscalationRecipient(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  await assertRoleOrFail('OWNER')
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return guard
   const id = fd.get('id') as string
   const field = fd.get('field') as string
   if (!id || !['sms_enabled', 'is_active'].includes(field)) return { ok: false }

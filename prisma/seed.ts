@@ -11,7 +11,13 @@ const prisma = new PrismaClient({ adapter } as any)
 async function main() {
   console.log('Seeding admin_users for EtinBOT...')
 
-  const adminHash = await bcrypt.hash('admin123', 12)
+  // Hasło seedowe TYLKO z env — zero defaultów typu admin123 na publicznym URL.
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD
+  if (!seedPassword || seedPassword.length < 12) {
+    throw new Error('Ustaw SEED_ADMIN_PASSWORD (min 12 znaków) w env przed seedem')
+  }
+
+  const adminHash = await bcrypt.hash(seedPassword, 12)
   await prisma.adminUser.upsert({
     where: { email: 'kamil@etingroup.pl' },
     update: {},
@@ -24,7 +30,7 @@ async function main() {
   })
 
   console.log('Seed done')
-  console.log('  Superadmin: kamil@etingroup.pl / admin123')
+  console.log('  Superadmin: kamil@etingroup.pl (hasło z SEED_ADMIN_PASSWORD)')
   console.log('  ZMIEN HASLO po pierwszym logowaniu!')
 }
 
