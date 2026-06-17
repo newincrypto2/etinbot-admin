@@ -283,6 +283,20 @@ export async function markEmailThreadSpam(id: string): Promise<EmailActionResult
   }
 }
 
+/** „NIE spam" — przenosi odfiltrowaną wiadomość do Poczty (tworzy wątek + draft). */
+export async function restoreFromSpam(inboundId: string): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const r = await callBackend('/api/email/restore-from-spam', { inbound_id: inboundId })
+  if (!r.ok) {
+    const detail = (r.data?.detail as string) || r.text || `HTTP ${r.status}`
+    return { ok: false, message: `Nie udało się przywrócić: ${detail}` }
+  }
+  revalidatePath('/poczta')
+  return { ok: true, message: 'Przeniesiono do Poczty.', redirect: true }
+}
+
 /** Rozpocznij nową konwersację mailową (compose) → tworzy draft do wysłania. */
 export async function composeEmail(input: {
   mailboxAddress: string

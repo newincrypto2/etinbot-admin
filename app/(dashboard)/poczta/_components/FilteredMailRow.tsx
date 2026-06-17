@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Shield, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Shield, X, Inbox } from 'lucide-react'
 
-import { readFilteredMail } from '@/actions/email'
+import { readFilteredMail, restoreFromSpam } from '@/actions/email'
 import { fmtDateTime } from '@/lib/datetime'
 
 type FilteredMail = {
@@ -21,6 +22,22 @@ export function FilteredMailRow({ m }: { m: FilteredMail }) {
   const [open, setOpen] = useState(false)
   const [body, setBody] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const [restoring, startRestore] = useTransition()
+  const [err, setErr] = useState<string | null>(null)
+  const router = useRouter()
+
+  const onRestore = () => {
+    setErr(null)
+    startRestore(async () => {
+      const r = await restoreFromSpam(m.id)
+      if (r.ok) {
+        setOpen(false)
+        router.refresh()
+      } else {
+        setErr(r.message)
+      }
+    })
+  }
 
   const onOpen = () => {
     setOpen(true)
@@ -91,6 +108,17 @@ export function FilteredMailRow({ m }: { m: FilteredMail }) {
               ) : (
                 <div className="text-sm whitespace-pre-wrap leading-relaxed text-slate-800">{body}</div>
               )}
+            </div>
+            <div className="border-t border-slate-100 px-5 py-3 flex items-center justify-between gap-3">
+              {err ? <span className="text-xs text-rose-600 truncate">{err}</span> : <span className="text-xs text-slate-400">To wiadomość od klienta?</span>}
+              <button
+                onClick={onRestore}
+                disabled={restoring}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 shrink-0"
+              >
+                <Inbox className="h-4 w-4" />
+                {restoring ? 'Przenoszę…' : 'NIE spam — przenieś do Poczty'}
+              </button>
             </div>
           </div>
         </div>
