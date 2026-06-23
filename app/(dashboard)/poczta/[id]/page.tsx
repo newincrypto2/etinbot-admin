@@ -213,7 +213,11 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
               <p className="text-xs text-slate-400">Brak zamówień powiązanych z tym adresem e-mail.</p>
             ) : (
               <ul className="space-y-3">
-                {orders.map((o) => (
+                {orders.map((o) => {
+                  // Realny URL śledzenia bierzemy z żywego statusu przesyłki (BaseLinker
+                  // getOrderPackages), bo orders_cache.tracking_url bywa puste. Fallback: cache.
+                  const trackUrl = shipMap.get(o.extId)?.trackingUrl ?? o.trackingUrl ?? null
+                  return (
                   <li key={o.extId} className="text-sm border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between">
                       <a
@@ -252,16 +256,24 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                       {o.paymentMethod && <span>{o.paymentMethod}</span>}
                     </div>
                     {o.trackingNumber && (
-                      <a
-                        href={o.trackingUrl ?? '#'}
-                        target="_blank"
-                        className="text-[11px] text-indigo-600 hover:underline mt-1 inline-flex items-center gap-1"
-                      >
-                        <Truck className="h-3 w-3" /> {o.trackingNumber}
-                      </a>
+                      trackUrl ? (
+                        <a
+                          href={trackUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-indigo-600 hover:underline mt-1 inline-flex items-center gap-1"
+                        >
+                          <Truck className="h-3 w-3" /> {o.trackingNumber}
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 mt-1 inline-flex items-center gap-1">
+                          <Truck className="h-3 w-3" /> {o.trackingNumber}
+                        </span>
+                      )
                     )}
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </div>
