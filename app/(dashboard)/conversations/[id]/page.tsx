@@ -154,7 +154,12 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
           <div className="space-y-2">
             {conv.messages.map((m) => {
               const rolemeta = ROLE_LABEL[m.role] ?? ROLE_LABEL.system
-              const toolCalls = Array.isArray(m.toolCalls) ? m.toolCalls : null
+              // Prisma driver adapter zwraca jsonb jako STRING — bez parse tool calls
+              // nigdy się nie renderowały (silent fail)
+              const rawTc = typeof m.toolCalls === 'string'
+                ? (() => { try { return JSON.parse(m.toolCalls) } catch { return null } })()
+                : m.toolCalls
+              const toolCalls = Array.isArray(rawTc) ? rawTc : null
 
               return (
                 <div key={m.id} className={`rounded-lg border p-3 ${rolemeta.color}`}>

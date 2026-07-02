@@ -1,9 +1,12 @@
 import { prisma } from '@/lib/prisma'
 
-async function clientIdFromSlug(slug?: string): Promise<string | null> {
-  if (!slug) return null
+async function clientIdFromSlug(slug?: string): Promise<string> {
+  // FAIL-CLOSED: brak/nieznany slug NIE może zdjąć filtra tenanta — wcześniej
+  // zwracaliśmy null i listy pokazywały dane WSZYSTKICH tenantów (współdzielona DB).
+  if (!slug) throw new Error('Brak CLIENT_SLUG — panel wymaga przypisanego tenanta')
   const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
-  return c?.id ?? null
+  if (!c) throw new Error(`Nieznany tenant '${slug}' — sprawdź env CLIENT_SLUG`)
+  return c.id
 }
 
 export type EmailThreadRow = {
@@ -195,8 +198,11 @@ export type EmailThreadDetail = {
 }
 
 export async function getEmailThread(id: string): Promise<EmailThreadDetail | null> {
+  // Scope po tenancie panelu — bez tego znajomość UUID wystarczała do odczytu
+  // wątku INNEGO tenanta (współdzielona DB, np. KH + Silver Place).
+  const { panelClientId } = await import('@/lib/tenant')
   const conv = await prisma.conversations.findFirst({
-    where: { id, channel: { in: ['email', 'allegro', 'allegro_issue'] } },
+    where: { id, client_id: await panelClientId(), channel: { in: ['email', 'allegro', 'allegro_issue'] } },
     select: {
       id: true,
       client_id: true,
@@ -353,7 +359,7 @@ export async function getCustomerOrders(clientId: string, email: string | null):
     deliveryMethod: r.delivery_method,
     paymentMethod: r.payment_method,
     dateAdd: r.date_add,
-    itemCount: Array.isArray(r.items) ? r.items.length : null,
+    itemCount: coerceArr(r.items).length || null, // jsonb bywa stringiem (driver adapter)
   }))
 }
 

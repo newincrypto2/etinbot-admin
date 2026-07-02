@@ -104,6 +104,8 @@ export async function updateEscalation(_prev: ActionResult, fd: FormData): Promi
     parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
     return { ok: false, message: 'Błędy walidacji', errors }
   }
+  const guard = await assertRoleOrFail('OWNER')
+  if (!guard.ok) return { ok: false, message: guard.message }
   const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
   const id = await getClientIdBySlug(slug)
   await prisma.clients.update({

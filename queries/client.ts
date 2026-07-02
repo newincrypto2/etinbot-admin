@@ -145,7 +145,12 @@ export type EcommerceIntegrations = {
 export async function getEcommerceIntegrations(slug: string): Promise<EcommerceIntegrations | null> {
   const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true, config: true } })
   if (!c) return null
-  const integ = (((c.config as any)?.integrations) ?? {}) as Record<string, unknown>
+  // config (jsonb) bywa stringiem przez driver adapter — bez coerce strona integracji
+  // pokazywała puste pola (a zapis mógł nadpisać istniejące klucze)
+  const rawCfg = typeof c.config === 'string'
+    ? (() => { try { return JSON.parse(c.config as string) } catch { return {} } })()
+    : (c.config ?? {})
+  const integ = (((rawCfg as any)?.integrations) ?? {}) as Record<string, unknown>
   const [lastOrder, lastProduct, ordersCount, productsCount] = await Promise.all([
     prisma.orders_cache.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),
     prisma.products.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),

@@ -153,8 +153,10 @@ export type ConversationDetail = {
 }
 
 export async function getConversation(id: string): Promise<ConversationDetail | null> {
-  const conv = await prisma.conversations.findUnique({
-    where: { id },
+  // Scope po tenancie panelu (anty cross-tenant read po UUID we współdzielonej DB)
+  const { panelClientId } = await import('@/lib/tenant')
+  const conv = await prisma.conversations.findFirst({
+    where: { id, client_id: await panelClientId() },
     select: {
       id: true,
       channel: true,
