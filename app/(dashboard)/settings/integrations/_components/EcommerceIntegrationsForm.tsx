@@ -45,7 +45,7 @@ export function EcommerceIntegrationsForm({ action, initial }: Props) {
         <Input
           name="baselinkerToken"
           type="password"
-          placeholder={initial.baselinkerTokenSet ? '••••• zostaw puste żeby nie zmieniać' : 'token API BaseLinker'}
+          placeholder={initial.baselinkerTokenSet ? '••••• zostaw puste żeby nie zmieniać' : 'token API BaseLinker (może być w env backendu)'}
         />
       </div>
 

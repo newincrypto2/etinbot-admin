@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { listEscalations, getEscalationStats } from '@/queries/escalations'
 import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { EscalationCard } from './_components/EscalationCard'
+import { ResolveAllButton } from './_components/ResolveAllButton'
 
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
@@ -10,12 +11,15 @@ const REASON_LABEL: Record<string, string> = {
   unknown_question: 'Nieznane pytanie',
   modification_request: 'Zmiana / anulowanie',
   complaint: 'Reklamacja',
-  emergency: 'Awaria / sytuacja pilna',
-  investment_inquiry: 'Pytanie inwestycyjne',
+  emergency: 'Sytuacja pilna',
+  investment_inquiry: 'Zapytanie B2B / hurt',
   billing_dispute: 'Spór o płatność',
   other_human_needed: 'Inne — wymaga człowieka',
   auto_detected_from_response: 'Sprawa do obsługi',
   'user request': 'Prośba klienta o człowieka',
+  b2b_inquiry: 'Zapytanie B2B / hurt',
+  return_request: 'Zwrot',
+  order_not_found: 'Nie znaleziono zamówienia',
 }
 
 type SearchParams = Promise<{ status?: 'unresolved' | 'resolved' | 'all'; reason?: string }>
@@ -41,6 +45,9 @@ export default async function EscalationsPage(props: { searchParams: SearchParam
             Sprawy przekazane przez bota do człowieka. Rozwiąż lub zaakceptuj jako nowe FAQ (bot się uczy).
           </p>
         </div>
+        {canEdit && status === 'unresolved' && (
+          <ResolveAllButton reason={reason} count={rows.length} />
+        )}
       </header>
 
       {/* Stats */}

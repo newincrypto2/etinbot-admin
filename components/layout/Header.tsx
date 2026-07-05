@@ -44,7 +44,7 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="md:hidden font-semibold text-gray-900">Silver Bot</div>
+        <div className="md:hidden font-semibold text-gray-900">EtinBOT</div>
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
@@ -57,7 +57,7 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
           <div className="text-right">
             <div className="text-sm font-medium text-gray-900 leading-tight">{user.name}</div>
             <div className="text-[11px] text-gray-500 leading-tight">
-              {user.role === 'ADMIN' ? 'Administrator' : 'Agent'}
+              {({ SUPERADMIN: 'Superadmin', ADMIN: 'Administrator', OWNER: 'Operator', EDITOR: 'Editor', VIEWER: 'Viewer', AGENT: 'Agent' } as Record<string, string>)[user.role?.toUpperCase?.() ?? ''] ?? user.role}
             </div>
           </div>
         </div>

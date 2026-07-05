@@ -17,7 +17,7 @@ type Props = {
 }
 
 const ROLE_OPTIONS = [
-  { value: 'office', label: 'Biuro / recepcja' },
+  { value: 'office', label: 'Biuro / obsługa' },
   { value: 'security', label: 'Ochrona 24/7' },
   { value: 'manager', label: 'Manager' },
   { value: 'owner', label: 'Właściciel' },

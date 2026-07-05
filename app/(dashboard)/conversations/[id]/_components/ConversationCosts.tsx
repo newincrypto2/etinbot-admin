@@ -34,7 +34,7 @@ export function ConversationCosts({ summary }: { summary: ConversationCostSummar
         </thead>
         <tbody>
           {summary.breakdown.map((line) => (
-            <tr key={line.service} className="border-t border-slate-100">
+            <tr key={line.service + line.unit_type} className="border-t border-slate-100">
               <td className="px-3 py-1.5 text-slate-700 text-xs">
                 {serviceName(line.service)}
                 {line.line_count > 1 && (

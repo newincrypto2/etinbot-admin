@@ -11,6 +11,7 @@ import { ConversationCosts } from './_components/ConversationCosts'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', voice: 'Telefon', idobooking: 'IdoBooking',
+  webchat: 'Webchat', messenger: 'Messenger', allegro: 'Allegro (wiadomości)', allegro_issue: 'Allegro (reklamacje)',
 }
 
 const BUILDING_LABEL: Record<string, string> = {
@@ -49,7 +50,7 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
       <header className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {conv.guestName ?? conv.guestPhone ?? conv.guestEmail ?? conv.threadId}
+            {conv.guestName ?? conv.guestPhone ?? conv.guestEmail ?? (conv.channel === 'webchat' ? 'Gość (webchat)' : conv.channel === 'messenger' ? 'Gość (Messenger)' : conv.threadId)}
           </h1>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <Badge variant="secondary">{CHANNEL_LABEL[conv.channel] ?? conv.channel}</Badge>
@@ -58,7 +59,7 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
             {conv.escalationCount > 0 && (
               <Badge variant="outline" className="text-red-700 border-red-200 bg-red-50 gap-1">
                 <AlertTriangle className="h-3 w-3" />
-                {conv.escalationCount} eskalacja{conv.escalationCount === 1 ? '' : 'i'}
+                {conv.escalationCount} {conv.escalationCount === 1 ? 'eskalacja' : conv.escalationCount < 5 ? 'eskalacje' : 'eskalacji'}
               </Badge>
             )}
           </div>

@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   if (format === 'summary') {
     const summary = await getMonthlySummary(CLIENT_SLUG, `${month.iso}-01`)
     const lines = [
-      `# Silver Bot — koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
+      `# EtinBOT — koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
       csvRow(['service', 'units', 'unit_type', 'cost_pln']),
     ]
     for (const r of summary.byService) {
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
   `
 
   const lines = [
-    `# Silver Bot — detail koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
+    `# EtinBOT — detail koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
     csvRow([
       'created_at',
       'conversation_id',

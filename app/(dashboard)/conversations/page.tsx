@@ -12,6 +12,10 @@ const CHANNEL_LABEL: Record<string, string> = {
   email: 'Email',
   voice: 'Telefon',
   idobooking: 'IdoBooking',
+  webchat: 'Webchat',
+  messenger: 'Messenger',
+  allegro: 'Allegro (wiadomości)',
+  allegro_issue: 'Allegro (reklamacje)',
 }
 
 const CHANNEL_COLOR: Record<string, string> = {

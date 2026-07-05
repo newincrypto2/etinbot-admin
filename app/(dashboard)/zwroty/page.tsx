@@ -4,6 +4,17 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { listAllegroReturns } from '@/queries/email'
 import { fmtFullDateTime } from '@/lib/datetime'
 
+const RETURN_STATUS_LABEL: Record<string, string> = {
+  CREATED: 'Utworzony',
+  IN_TRANSIT: 'W drodze',
+  DELIVERED: 'Dostarczony',
+  FINISHED: 'Zakończony',
+  REJECTED: 'Odrzucony',
+  COMMISSION_REFUNDED: 'Prowizja zwrócona',
+  REFUNDED: 'Zwrot wypłacony',
+  CANCELLED: 'Anulowany',
+}
+
 const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'krainaherbaty'
 
 export default async function ZwrotyPage() {
@@ -44,7 +55,7 @@ export default async function ZwrotyPage() {
                     ))}
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[12px] text-slate-500">
-                    {r.status ? <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{r.status}</span> : null}
+                    {r.status ? <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{RETURN_STATUS_LABEL[r.status] ?? r.status}</span> : null}
                     {r.refundText ? <span>Zwrot: {r.refundText}</span> : null}
                     {r.createdAt ? <span>{fmtFullDateTime(r.createdAt)}</span> : null}
                   </div>

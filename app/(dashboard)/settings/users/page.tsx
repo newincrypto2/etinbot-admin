@@ -119,8 +119,8 @@ export default async function UsersPage() {
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5">
         <div className="font-medium text-slate-700 text-sm mb-2">Role:</div>
         <div><strong>Superadmin</strong> — pełen dostęp, w tym Settings + Users + integracje API</div>
-        <div><strong>Operator</strong> — właściciel obiektu (brat). Pełen dostęp + zarządzanie userami</div>
-        <div><strong>Editor</strong> — recepcja. Edytuje FAQ, apartamenty, eskalacje. Bez Settings</div>
+        <div><strong>Operator</strong> — właściciel biznesu. Pełen dostęp + zarządzanie userami</div>
+        <div><strong>Editor</strong> — obsługa klienta. Edytuje FAQ, pocztę, eskalacje. Bez Settings</div>
         <div><strong>Viewer</strong> — podgląd dashboard + lista konwersacji. Bez edycji</div>
       </div>
     </div>

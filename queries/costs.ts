@@ -32,15 +32,18 @@ export async function getConversationCosts(
   >`
     SELECT service,
            SUM(units)    AS units,
-           MIN(unit_type) AS unit_type,
+           unit_type,
            SUM(cost_usd) AS cost_usd,
            SUM(cost_pln) AS cost_pln,
            COUNT(*)      AS line_count
     FROM conversation_costs
     WHERE conversation_id = ${conversationId}::uuid
-    GROUP BY service
+    GROUP BY service, unit_type
     ORDER BY SUM(cost_pln) DESC NULLS LAST
   `
+  // GROUP BY (service, unit_type) — anthropic_messages ma i tokeny (chat),
+  // i minuty (voice LLM przez ElevenLabs); SUM po samym service dawał
+  // bezsensowne "67105.37 min" (tokeny + minuty w jednym worku)
 
   let totalUsd = new Prisma.Decimal(0)
   let totalPln = new Prisma.Decimal(0)
@@ -104,15 +107,16 @@ export async function getMonthlySummary(
            SUM(cc.cost_pln) AS cost_pln,
            SUM(cc.cost_usd) AS cost_usd,
            SUM(cc.units)    AS units,
-           MIN(cc.unit_type) AS unit_type
+           cc.unit_type
     FROM conversation_costs cc
     JOIN clients c ON c.id = cc.client_id
     WHERE c.slug = ${clientSlug}
       AND cc.created_at >= ${start}
       AND cc.created_at < ${end}
-    GROUP BY cc.service
+    GROUP BY cc.service, cc.unit_type
     ORDER BY SUM(cc.cost_pln) DESC NULLS LAST
   `
+  // GROUP BY (service, unit_type) — patrz komentarz w getConversationCosts
 
   const convCountRow = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
     SELECT COUNT(DISTINCT cc.conversation_id) AS cnt

@@ -42,7 +42,7 @@ export default function LoginPage() {
           <div className="mx-auto h-12 w-12 rounded-xl bg-indigo-500 flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/20">
             <span className="text-white font-bold text-lg">S</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Silver Bot</h1>
+          <h1 className="text-xl font-bold text-gray-900">EtinBOT</h1>
           <p className="text-sm text-gray-500 mt-1">Panel administracyjny — zaloguj się</p>
         </div>
 

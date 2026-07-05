@@ -55,7 +55,7 @@ export function EscalationCard({
             </Badge>
             {escalation.escalatedTo && (
               <Badge variant="secondary" className="text-[10px]">
-                → {escalation.escalatedTo === 'security' ? 'ochrona' : 'recepcja'}
+                → {escalation.escalatedTo === 'security' ? 'ochrona' : 'obsługa'}
               </Badge>
             )}
             {escalation.language && LANG_FLAG[escalation.language] && (

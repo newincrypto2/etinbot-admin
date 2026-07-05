@@ -8,6 +8,7 @@ const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', voice: 'Telefon', idobooking: 'IdoBooking',
+  webchat: 'Webchat', messenger: 'Messenger', allegro: 'Allegro (wiadomości)', allegro_issue: 'Allegro (reklamacje)',
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
         <MetricCard
           label="Nierozwiązane eskalacje"
           value={m.unresolvedEscalations}
-          hint="aktualnie czekają na recepcję"
+          hint="aktualnie czekają na obsługę"
           icon={<AlertTriangle className="h-4 w-4" />}
           status={m.unresolvedEscalations === 0 ? 'good' : 'warning'}
           href={m.unresolvedEscalations > 0 ? '/escalations' : undefined}
@@ -87,7 +88,7 @@ export default async function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-slate-900 line-clamp-2">{f.question}</div>
                     <div className="text-xs text-slate-500 mt-0.5">
-                      {f.category} · <span className="font-mono">{f.hitCount}</span> trafień
+                      {f.category} · <span className="font-mono">{f.hitCount}</span> {f.hitCount === 1 ? 'trafienie' : f.hitCount < 5 ? 'trafienia' : 'trafień'}
                     </div>
                   </div>
                 </Link>

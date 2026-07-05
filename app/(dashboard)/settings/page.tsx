@@ -52,7 +52,7 @@ export default async function SettingsPage() {
           description={
             isEcom ? (
               <>
-                <div>BaseLinker: {ecom?.baselinkerTokenSet ? '✓ token ustawiony' : '✗ brak tokena'}</div>
+                <div>BaseLinker: {ecom?.baselinkerTokenSet ? '✓ token ustawiony' : (ecom?.ordersCount ?? 0) > 0 ? '✓ działa (token w env backendu)' : '✗ brak tokena'}</div>
                 <div>WooCommerce: {ecom?.wcUrl ? `✓ ${ecom.wcUrl}` : '✗ nie skonfigurowane'}</div>
                 <div>Sync: {ecom?.ordersCount ?? 0} zamówień · {ecom?.productsCount ?? 0} produktów</div>
               </>

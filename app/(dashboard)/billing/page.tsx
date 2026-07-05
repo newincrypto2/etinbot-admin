@@ -147,7 +147,7 @@ export default async function BillingPage(props: {
                 const total = parseFloat(summary.total_pln || '0')
                 const share = total > 0 ? (plnNet / total) * 100 : 0
                 return (
-                  <tr key={row.service} className="border-t border-slate-100">
+                  <tr key={row.service + row.unit_type} className="border-t border-slate-100">
                     <td className="px-4 py-2 text-slate-800">{serviceName(row.service)}</td>
                     <td className="px-4 py-2 text-right font-mono text-xs text-slate-600">
                       {fmtUnits(row.units, row.unit_type)}

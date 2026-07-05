@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label'
 import { createUser, type ActionResult } from '@/actions/users'
 
 const ROLES = [
-  { value: 'OWNER', label: 'Operator (właściciel obiektu)', hint: 'Pełen dostęp + zarządzanie userami' },
-  { value: 'EDITOR', label: 'Editor (recepcja)', hint: 'Może edytować FAQ, apartamenty, eskalacje' },
+  { value: 'OWNER', label: 'Operator (właściciel biznesu)', hint: 'Pełen dostęp + zarządzanie userami' },
+  { value: 'EDITOR', label: 'Editor (obsługa klienta)', hint: 'Może edytować FAQ, pocztę, eskalacje' },
   { value: 'VIEWER', label: 'Viewer (podgląd)', hint: 'Tylko dashboard + przegląd, bez edycji' },
   { value: 'SUPERADMIN', label: 'Superadmin (devops)', hint: 'Pełen dostęp + Settings + Users' },
 ]
@@ -35,7 +35,7 @@ export function AddUserForm() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-medium">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="jan@matysproperty.pl" required className="h-9" />
+          <Input id="email" name="email" type="email" placeholder="jan@etingroup.pl" required className="h-9" />
           {state.errors?.email && <p className="text-xs text-red-600">{state.errors.email}</p>}
         </div>
         <div className="space-y-1.5">

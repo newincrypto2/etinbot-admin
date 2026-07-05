@@ -184,3 +184,33 @@ export async function acceptEscalationAsFaq(
   revalidatePath('/faq')
   return { ok: true, message: 'Nowe FAQ utworzone i powiązane z eskalacją' }
 }
+
+// ---- Bulk resolve (zbiorcze rozwiązanie przefiltrowanych) ----
+
+const BULK_CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
+
+export async function resolveAllUnresolved(reason: string): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const client = await prisma.clients.findUnique({
+    where: { slug: BULK_CLIENT_SLUG },
+    select: { id: true },
+  })
+  if (!client) return { ok: false, message: 'Brak klienta' }
+
+  const res = await prisma.escalations.updateMany({
+    where: {
+      client_id: client.id,
+      resolved_at: null,
+      ...(reason && reason !== 'all' ? { reason } : {}),
+    },
+    data: {
+      resolved_at: new Date(),
+      resolved_by: await getResolverEmail(),
+      resolution_note: 'Rozwiązane zbiorczo z panelu',
+    },
+  })
+  revalidatePath('/escalations')
+  return { ok: true, message: `Rozwiązano ${res.count} eskalacji` }
+}
