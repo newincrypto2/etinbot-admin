@@ -584,6 +584,32 @@ model email_outbound_attachments {
   @@index([draft_id], map: "idx_email_outbound_att_draft")
 }
 
+model promo_bars {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id           String    @db.Uuid
+  name                String
+  enabled             Boolean   @default(false)
+  priority            Int       @default(0)
+  text                String    @default("")
+  cta_text            String?
+  cta_url             String?
+  coupon_code         String?
+  timer_ends_at       DateTime? @db.Timestamptz(6)
+  timer_finished_text String?
+  hide_after_end      Boolean   @default(true)
+  starts_at           DateTime? @db.Timestamptz(6)
+  ends_at             DateTime? @db.Timestamptz(6)
+  include_paths       String[]  @default([])
+  exclude_paths       String[]  @default(["/koszyk", "/zamowienie", "/cart", "/checkout"])
+  colors              Json      @default("{}")
+  views               BigInt    @default(0)
+  clicks              BigInt    @default(0)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([client_id, enabled, priority(sort: Desc)], map: "idx_promo_bars_client_enabled")
+}
+
 enum Role {
   SUPERADMIN
   OWNER

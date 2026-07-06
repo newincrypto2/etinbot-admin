@@ -16,6 +16,7 @@ import {
   Coins,
   Undo2,
   X,
+  Megaphone,
 } from 'lucide-react'
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/products', label: 'Produkty', icon: Package },
   { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
   { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2 },
+  { href: '/promo', label: 'Pasek promo', icon: Megaphone },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
