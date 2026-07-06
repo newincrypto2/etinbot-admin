@@ -40,6 +40,10 @@ export default async function EditPromoPage(props: { params: Promise<{ id: strin
     exclude_paths: (b.exclude_paths ?? []).join(', '),
     priority: b.priority,
     colors: colors ?? {},
+    sizes: ((typeof b.sizes === 'string' ? JSON.parse(b.sizes as string) : b.sizes) ?? {}) as Record<string, number>,
+    text_b: b.text_b ?? '',
+    free_shipping_threshold: b.free_shipping_threshold ? String(b.free_shipping_threshold) : '',
+    text_reached: b.text_reached ?? '',
   }
 
   return (

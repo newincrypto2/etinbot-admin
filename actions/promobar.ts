@@ -15,6 +15,9 @@ const HEX = /^#?[0-9a-fA-F]{6}$/
 const PromoSchema = z.object({
   name: z.string().min(2).max(120),
   text: z.string().min(2).max(300),
+  text_b: z.string().max(300).optional().or(z.literal('')),
+  free_shipping_threshold: z.string().optional().or(z.literal('')),
+  text_reached: z.string().max(300).optional().or(z.literal('')),
   cta_text: z.string().max(60).optional().or(z.literal('')),
   cta_url: z.string().url().optional().or(z.literal('')),
   coupon_code: z.string().max(40).optional().or(z.literal('')),
@@ -32,6 +35,10 @@ const PromoSchema = z.object({
   color_cta_text: z.string().regex(HEX),
   color_timer_bg: z.string().regex(HEX),
   color_timer_text: z.string().regex(HEX),
+  size_text: z.coerce.number().int().min(10).max(40),
+  size_cta: z.coerce.number().int().min(10).max(40),
+  size_timer_digits: z.coerce.number().int().min(10).max(40),
+  size_timer_labels: z.coerce.number().int().min(8).max(30),
 })
 
 function hex(v: string): string {
@@ -61,6 +68,9 @@ function parseForm(fd: FormData) {
   return PromoSchema.safeParse({
     name: fd.get('name') ?? '',
     text: fd.get('text') ?? '',
+    text_b: fd.get('text_b') ?? '',
+    free_shipping_threshold: fd.get('free_shipping_threshold') ?? '',
+    text_reached: fd.get('text_reached') ?? '',
     cta_text: fd.get('cta_text') ?? '',
     cta_url: fd.get('cta_url') ?? '',
     coupon_code: fd.get('coupon_code') ?? '',
@@ -78,6 +88,10 @@ function parseForm(fd: FormData) {
     color_cta_text: fd.get('color_cta_text') ?? '',
     color_timer_bg: fd.get('color_timer_bg') ?? '',
     color_timer_text: fd.get('color_timer_text') ?? '',
+    size_text: fd.get('size_text') ?? 15,
+    size_cta: fd.get('size_cta') ?? 13,
+    size_timer_digits: fd.get('size_timer_digits') ?? 14,
+    size_timer_labels: fd.get('size_timer_labels') ?? 10,
   })
 }
 
@@ -85,6 +99,9 @@ function toData(d: z.infer<typeof PromoSchema>) {
   return {
     name: d.name,
     text: d.text,
+    text_b: d.text_b || null,
+    free_shipping_threshold: d.free_shipping_threshold ? parseFloat(d.free_shipping_threshold.replace(',', '.')) || null : null,
+    text_reached: d.text_reached || null,
     cta_text: d.cta_text || null,
     cta_url: d.cta_url || null,
     coupon_code: d.coupon_code || null,
@@ -103,6 +120,12 @@ function toData(d: z.infer<typeof PromoSchema>) {
       cta_text: hex(d.color_cta_text),
       timer_bg: hex(d.color_timer_bg),
       timer_text: hex(d.color_timer_text),
+    },
+    sizes: {
+      text: d.size_text,
+      cta: d.size_cta,
+      timer_digits: d.size_timer_digits,
+      timer_labels: d.size_timer_labels,
     },
     updated_at: new Date(),
   }

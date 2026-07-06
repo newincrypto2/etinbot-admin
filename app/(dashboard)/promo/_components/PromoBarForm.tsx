@@ -23,7 +23,13 @@ export type PromoBarValues = {
   exclude_paths: string
   priority: number
   colors: Record<string, string>
+  sizes: Record<string, number>
+  text_b: string
+  free_shipping_threshold: string
+  text_reached: string
 }
+
+const DEFAULT_SIZES: Record<string, number> = { text: 15, cta: 13, timer_digits: 14, timer_labels: 10 }
 
 const DEFAULT_COLORS: Record<string, string> = {
   bg: '#2e7d32', text: '#ffffff', cta_bg: '#ffffff',
@@ -58,6 +64,7 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
   const router = useRouter()
   const isEdit = Boolean(initial?.id)
   const [colors, setColors] = useState<Record<string, string>>({ ...DEFAULT_COLORS, ...(initial?.colors ?? {}) })
+  const [sizes, setSizes] = useState<Record<string, number>>({ ...DEFAULT_SIZES, ...(initial?.sizes ?? {}) })
   const [text, setText] = useState(initial?.text ?? '')
   const [ctaText, setCtaText] = useState(initial?.cta_text ?? '')
   const [timer, setTimer] = useState(initial?.timer_ends_at ?? '')
@@ -82,22 +89,22 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
       <div className="rounded-lg border border-slate-200 overflow-hidden">
         <div className="px-3 py-1.5 text-[11px] font-medium text-slate-500 bg-slate-50 border-b">Podgląd</div>
         <div
-          className="w-full flex items-center justify-center gap-4 flex-wrap px-10 py-2.5 text-[15px] relative"
-          style={{ background: colors.bg, color: colors.text }}
+          className="w-full flex items-center justify-center gap-4 flex-wrap px-10 py-2.5 relative"
+          style={{ background: colors.bg, color: colors.text, fontSize: `${sizes.text}px` }}
         >
           <span className="font-semibold">{text || 'Treść paska promocyjnego…'}</span>
           {timer && (
             <span className="inline-flex gap-1.5">
               {[['03', 'Godzin'], ['18', 'Minut'], ['36', 'Sekund']].map(([n, l]) => (
                 <span key={l} className="inline-flex flex-col items-center gap-0.5">
-                  <span className="rounded px-1.5 py-0.5 font-bold text-sm min-w-[30px] text-center" style={{ background: colors.timer_bg, color: colors.timer_text }}>{n}</span>
-                  <span className="text-[10px] opacity-90">{l}</span>
+                  <span className="rounded px-1.5 py-0.5 font-bold min-w-[30px] text-center" style={{ background: colors.timer_bg, color: colors.timer_text, fontSize: `${sizes.timer_digits}px` }}>{n}</span>
+                  <span className="opacity-90" style={{ fontSize: `${sizes.timer_labels}px` }}>{l}</span>
                 </span>
               ))}
             </span>
           )}
           {ctaText && (
-            <span className="rounded-md px-3.5 py-1.5 text-[13px] font-bold" style={{ background: colors.cta_bg, color: colors.cta_text }}>
+            <span className="rounded-md px-3.5 py-1.5 font-bold" style={{ background: colors.cta_bg, color: colors.cta_text, fontSize: `${sizes.cta}px` }}>
               {ctaText}
             </span>
           )}
@@ -124,6 +131,21 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
         <Field label="Kod rabatowy (opcjonalnie)" hint="Klik w przycisk skopiuje kod do schowka klienta (obok przejścia w link).">
           <input name="coupon_code" defaultValue={initial?.coupon_code ?? ''} className={INPUT} placeholder="WIOSNA15" />
         </Field>
+        <Field label="Wariant B treści — test A/B (opcjonalnie)" hint="Połowa odwiedzających zobaczy wariant B; porównasz CTR obu na liście kampanii.">
+          <input name="text_b" defaultValue={initial?.text_b ?? ''} className={INPUT} placeholder="Alternatywna treść paska…" />
+        </Field>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-700">Darmowa dostawa (dynamiczny pasek, opcjonalnie)</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Próg darmowej dostawy (zł)" hint={'W treści użyj {missing} i {prog}, np. "Do darmowej dostawy brakuje Ci {missing}!" — kwota liczona z koszyka klienta na żywo.'}>
+            <input name="free_shipping_threshold" defaultValue={initial?.free_shipping_threshold ?? ''} className={INPUT} placeholder="99" />
+          </Field>
+          <Field label="Tekst po osiągnięciu progu">
+            <input name="text_reached" defaultValue={initial?.text_reached ?? ''} className={INPUT} placeholder="Masz darmową dostawę! 🎉" />
+          </Field>
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
@@ -151,6 +173,22 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
           <Color name="color_cta_text" label="Tekst przycisku" value={colors.cta_text} onChange={setColor('cta_text')} />
           <Color name="color_timer_bg" label="Kafelki zegara" value={colors.timer_bg} onChange={setColor('timer_bg')} />
           <Color name="color_timer_text" label="Cyfry zegara" value={colors.timer_text} onChange={setColor('timer_text')} />
+        </div>
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide pt-2">Rozmiary czcionek (px)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {([['size_text', 'Tekst paska', 'text'], ['size_cta', 'Przycisk', 'cta'], ['size_timer_digits', 'Cyfry zegara', 'timer_digits'], ['size_timer_labels', 'Etykiety zegara', 'timer_labels']] as const).map(([name, label, key]) => (
+            <Field key={name} label={label}>
+              <input
+                name={name}
+                type="number"
+                min={8}
+                max={40}
+                value={sizes[key]}
+                onChange={(e) => setSizes((sz) => ({ ...sz, [key]: parseInt(e.target.value, 10) || DEFAULT_SIZES[key] }))}
+                className={INPUT}
+              />
+            </Field>
+          ))}
         </div>
       </div>
 

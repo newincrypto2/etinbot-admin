@@ -87,7 +87,14 @@ export default async function PromoPage() {
                       : 'ciągły'}
                   </td>
                   <td className="px-4 py-3 text-right text-xs font-mono text-slate-600">
-                    {String(b.views)} / {String(b.clicks)}
+                    {b.text_b ? (
+                      <div className="space-y-0.5">
+                        <div>A: {String(b.views)} / {String(b.clicks)}{Number(b.views) > 0 ? ` (${((Number(b.clicks) / Number(b.views)) * 100).toFixed(1)}%)` : ''}</div>
+                        <div>B: {String(b.views_b)} / {String(b.clicks_b)}{Number(b.views_b) > 0 ? ` (${((Number(b.clicks_b) / Number(b.views_b)) * 100).toFixed(1)}%)` : ''}</div>
+                      </div>
+                    ) : (
+                      <>{String(b.views)} / {String(b.clicks)}</>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end">
