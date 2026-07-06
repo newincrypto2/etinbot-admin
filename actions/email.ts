@@ -351,3 +351,33 @@ export async function rejectCandidate(candidateId: string): Promise<EmailActionR
   revalidatePath('/faq-nauka')
   return { ok: true, message: 'Kandydat odrzucony.' }
 }
+
+/** Przekaż (forward) mail klienta na inny adres — oryginał + załączniki. */
+export async function forwardInbound(
+  inboundId: string,
+  conversationId: string,
+  toAddress: string,
+  note?: string,
+): Promise<EmailActionResult> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const to = (toAddress || '').trim()
+  if (!to || !to.includes('@') || /[\s,;]/.test(to)) {
+    return { ok: false, message: 'Podaj jeden poprawny adres e-mail.' }
+  }
+
+  const by = await currentUserName()
+  const r = await callBackend('/api/email/forward', {
+    inbound_id: inboundId,
+    to_address: to,
+    note: note?.trim() || undefined,
+    forwarded_by: by,
+  })
+  if (!r.ok) {
+    return { ok: false, message: `Przekazanie nie powiodło się (${r.status}). ${r.text.slice(0, 160)}` }
+  }
+  revalidatePath(`/poczta/${conversationId}`)
+  const att = Number(r.data.attachments ?? 0)
+  return { ok: true, message: `Przekazano na ${to}${att ? ` (załączniki: ${att})` : ''} ✅` }
+}

@@ -6,6 +6,7 @@ import { getEmailThread, getCustomerOrders, getShipmentStatus, type ShipmentStat
 import { fmtFullDateTime, fmtDateShort } from '@/lib/datetime'
 import { EmailReplyPanel } from './_components/EmailReplyPanel'
 import { ThreadActions } from './_components/ThreadActions'
+import { ForwardButton } from './_components/ForwardButton'
 
 const ROLE_LABEL: Record<string, { label: string; color: string }> = {
   user: { label: 'Klient', color: 'bg-blue-50 border-blue-200 text-blue-900' },
@@ -61,13 +62,17 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
   let _ui = 0
   const msgRows = thread.messages
     .filter((m) => m.role !== 'tool')
-    .map((m) => ({
-      m,
-      attachments:
-        m.role === 'user'
-          ? thread.inbounds[_ui++]?.attachments ?? []
-          : (sentAtt.get(norm(m.content)) ?? []).map((a) => ({ ...a, downloadable: false })),
-    }))
+    .map((m) => {
+      const inbound = m.role === 'user' ? thread.inbounds[_ui++] : undefined
+      return {
+        m,
+        inboundId: inbound?.id ?? null,
+        attachments:
+          m.role === 'user'
+            ? inbound?.attachments ?? []
+            : (sentAtt.get(norm(m.content)) ?? []).map((a) => ({ ...a, downloadable: false })),
+      }
+    })
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -141,7 +146,7 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
           {/* Historia wątku — załączniki pod każdą wiadomością klienta */}
           <div className="space-y-3">
             {msgRows.length === 0 && <div className="text-sm text-slate-400">Brak wiadomości.</div>}
-            {msgRows.map(({ m, attachments }, i) => {
+            {msgRows.map(({ m, attachments, inboundId }, i) => {
               const role = ROLE_LABEL[m.role] ?? ROLE_LABEL.system
               return (
                 <div key={i} className={`rounded-lg border p-4 ${role.color}`}>
@@ -176,6 +181,11 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                           ),
                         )}
                       </div>
+                    </div>
+                  )}
+                  {m.role === 'user' && inboundId && (
+                    <div className="mt-2">
+                      <ForwardButton inboundId={inboundId} conversationId={thread.id} />
                     </div>
                   )}
                 </div>
