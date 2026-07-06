@@ -222,6 +222,7 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
               <option value="always">Zawsze (pasek stały)</option>
               <option value="exit_intent">Przy zamiarze wyjścia (desktop)</option>
               <option value="cart_idle">Bezczynność z koszykiem</option>
+              <option value="exit_or_idle">Oba — wyjście lub bezczynność (co pierwsze)</option>
             </select>
           </Field>
           <Field label="Sekundy bezczynności" hint="Tylko dla trybu bezczynności.">

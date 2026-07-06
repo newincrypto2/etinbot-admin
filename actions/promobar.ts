@@ -29,7 +29,7 @@ const PromoSchema = z.object({
   include_paths: z.string().optional().or(z.literal('')),
   exclude_paths: z.string().optional().or(z.literal('')),
   priority: z.coerce.number().int().min(0).max(1000),
-  trigger: z.enum(['always', 'exit_intent', 'cart_idle']),
+  trigger: z.enum(['always', 'exit_intent', 'cart_idle', 'exit_or_idle']),
   dynamic_coupon: z.boolean(),
   dynamic_percent: z.coerce.number().min(1).max(90),
   dynamic_valid_minutes: z.coerce.number().int().min(10).max(10080),

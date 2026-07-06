@@ -64,7 +64,7 @@ export default async function PromoPage() {
                           {b.name}
                           {b.trigger !== 'always' && (
                             <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 align-middle">
-                              {b.trigger === 'exit_intent' ? 'exit-intent' : 'bezczynność'}
+                              {b.trigger === 'exit_intent' ? 'exit-intent' : b.trigger === 'exit_or_idle' ? 'exit+bezczynność' : 'bezczynność'}
                             </span>
                           )}
                         </div>
@@ -100,7 +100,13 @@ export default async function PromoPage() {
                         <div>B: {String(b.views_b)} / {String(b.clicks_b)}{Number(b.views_b) > 0 ? ` (${((Number(b.clicks_b) / Number(b.views_b)) * 100).toFixed(1)}%)` : ''}</div>
                       </div>
                     ) : (
-                      <>{String(b.views)} / {String(b.clicks)}</>
+                      <>{String(b.views)} / {String(b.clicks)}{Number(b.views) > 0 ? ` (${((Number(b.clicks) / Number(b.views)) * 100).toFixed(1)}%)` : ''}</>
+                    )}
+                    {b.dynamic_coupon && (
+                      <div className="mt-0.5 text-[11px] text-emerald-700">
+                        kody: {String(b.claims)} · użyte: {String(b.redemptions)}
+                        {Number(b.claims) > 0 ? ` (${((Number(b.redemptions) / Number(b.claims)) * 100).toFixed(0)}%)` : ''}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3">
