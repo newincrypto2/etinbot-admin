@@ -23,6 +23,10 @@ export type PromoBarValues = {
   exclude_paths: string
   priority: number
   trigger: string
+  dynamic_coupon: boolean
+  dynamic_percent: string
+  dynamic_valid_minutes: number
+  dynamic_prefix: string
   trigger_seconds: number
   cooldown_hours: number
   colors: Record<string, string>
@@ -134,6 +138,21 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
         <Field label="Kod rabatowy (opcjonalnie)" hint="Klik w przycisk skopiuje kod do schowka klienta (obok przejścia w link).">
           <input name="coupon_code" defaultValue={initial?.coupon_code ?? ''} className={INPUT} placeholder="WIOSNA15" />
         </Field>
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-amber-900">
+            <input type="checkbox" name="dynamic_coupon" defaultChecked={initial?.dynamic_coupon ?? false} className="h-4 w-4" />
+            Kupon jednorazowy (generowany per klient w WooCommerce)
+          </label>
+          <p className="text-[11px] text-amber-700">
+            Klik w przycisk tworzy unikalny kod (1 użycie, wygasa po czasie) zamiast kopiować stały kod powyżej.
+            Stały kod działa wtedy jako awaryjny fallback.
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Rabat (%)"><input name="dynamic_percent" type="number" min={1} max={90} defaultValue={initial?.dynamic_percent ?? 10} className={INPUT} /></Field>
+            <Field label="Ważność (minuty)"><input name="dynamic_valid_minutes" type="number" min={10} max={10080} defaultValue={initial?.dynamic_valid_minutes ?? 60} className={INPUT} /></Field>
+            <Field label="Prefiks kodu"><input name="dynamic_prefix" defaultValue={initial?.dynamic_prefix ?? 'RABAT'} className={INPUT} placeholder="RABAT" /></Field>
+          </div>
+        </div>
         <Field label="Wariant B treści — test A/B (opcjonalnie)" hint="Połowa odwiedzających zobaczy wariant B; porównasz CTR obu na liście kampanii.">
           <input name="text_b" defaultValue={initial?.text_b ?? ''} className={INPUT} placeholder="Alternatywna treść paska…" />
         </Field>
