@@ -106,6 +106,7 @@ export default async function PromoPage() {
                       <div className="mt-0.5 text-[11px] text-emerald-700">
                         kody: {String(b.claims)} · użyte: {String(b.redemptions)}
                         {Number(b.claims) > 0 ? ` (${((Number(b.redemptions) / Number(b.claims)) * 100).toFixed(0)}%)` : ''}
+                        {Number(b.revenue) > 0 ? ` · ${Number(b.revenue).toFixed(2).replace('.', ',')} zł` : ''}
                       </div>
                     )}
                   </td>

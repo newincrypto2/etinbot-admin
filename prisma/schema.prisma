@@ -612,6 +612,7 @@ model promo_bars {
   clicks_b            BigInt    @default(0)
   claims              BigInt    @default(0)
   redemptions         BigInt    @default(0)
+  revenue             Decimal   @default(0) @db.Decimal(12, 2)
   dynamic_coupon      Boolean   @default(false)
   dynamic_percent     Decimal   @default(10) @db.Decimal(5, 2)
   dynamic_valid_minutes Int     @default(60)
