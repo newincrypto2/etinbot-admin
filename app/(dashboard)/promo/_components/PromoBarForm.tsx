@@ -22,6 +22,9 @@ export type PromoBarValues = {
   include_paths: string
   exclude_paths: string
   priority: number
+  trigger: string
+  trigger_seconds: number
+  cooldown_hours: number
   colors: Record<string, string>
   sizes: Record<string, number>
   text_b: string
@@ -194,6 +197,21 @@ export function PromoBarForm({ initial }: { initial?: PromoBarValues }) {
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
         <h2 className="text-sm font-semibold text-slate-700">Wyświetlanie</h2>
+        <div className="grid md:grid-cols-3 gap-4">
+          <Field label="Kiedy pokazywać" hint="Wyzwalane paski chwilowo zastępują pasek główny.">
+            <select name="trigger" defaultValue={initial?.trigger ?? 'always'} className={INPUT}>
+              <option value="always">Zawsze (pasek stały)</option>
+              <option value="exit_intent">Przy zamiarze wyjścia (desktop)</option>
+              <option value="cart_idle">Bezczynność z koszykiem</option>
+            </select>
+          </Field>
+          <Field label="Sekundy bezczynności" hint="Tylko dla trybu bezczynności.">
+            <input name="trigger_seconds" type="number" min={10} max={3600} defaultValue={initial?.trigger_seconds ?? 60} className={INPUT} />
+          </Field>
+          <Field label="Nie częściej niż co (godz.)" hint="Frequency cap dla pasków wyzwalanych.">
+            <input name="cooldown_hours" type="number" min={1} max={720} defaultValue={initial?.cooldown_hours ?? 24} className={INPUT} />
+          </Field>
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Pokazuj od (harmonogram, puste = od razu)">
             <input name="starts_at" type="datetime-local" defaultValue={initial?.starts_at ?? ''} className={INPUT} />

@@ -60,7 +60,14 @@ export default async function PromoPage() {
                     <div className="flex items-center gap-2">
                       <span className="inline-block h-4 w-4 rounded" style={{ background: colors?.bg ?? '#2e7d32' }} />
                       <div>
-                        <div className="font-medium text-slate-900">{b.name}</div>
+                        <div className="font-medium text-slate-900">
+                          {b.name}
+                          {b.trigger !== 'always' && (
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 align-middle">
+                              {b.trigger === 'exit_intent' ? 'exit-intent' : 'bezczynność'}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-400 max-w-md truncate">{b.text}</div>
                       </div>
                     </div>
