@@ -180,29 +180,38 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
   }
 
   const slug = await activeClientSlug()
-  const client = await prisma.clients.findUnique({ where: { slug }, select: { id: true, config: true } })
-  if (!client) return { ok: false, message: `Klient ${slug} nie znaleziony` }
 
-  // TODO: szyfrowanie sekretów (pgcrypto). Na razie plaintext w JSONB (jak env fallback).
-  const config: Record<string, any> = (client.config as any) ?? {}
-  const integ: Record<string, any> = { ...(config.integrations ?? {}) }
-
-  integ.wc_url = parsed.data.wcUrl || null   // niesekret — można wyczyścić
-  if (parsed.data.baselinkerToken) integ.baselinker_token = parsed.data.baselinkerToken
-  if (parsed.data.wcConsumerKey) integ.wc_consumer_key = parsed.data.wcConsumerKey
-  if (parsed.data.wcConsumerSecret) integ.wc_consumer_secret = parsed.data.wcConsumerSecret
-  // Kanały tekstowe — numer SMS + page_id niesekretne (można czyścić); tokeny tylko gdy podane
-  integ.twilio_sms_number = parsed.data.twilioSmsNumber || null
-  integ.messenger_page_id = parsed.data.messengerPageId || null
-  if (parsed.data.messengerPageToken) integ.messenger_page_token = parsed.data.messengerPageToken
-  if (parsed.data.messengerAppSecret) integ.messenger_app_secret = parsed.data.messengerAppSecret
-
-  config.integrations = integ
-
-  await prisma.clients.update({ where: { id: client.id }, data: { config: config as any } })
+  // S3: zapis przez backend /api/admin/set-integration — sekrety szyfrowane at-rest
+  // (panel nie dotyka configu sekretów przez Prisma).
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY w env panelu.' }
+  const setIntegration = async (k: string, v: string | null) => {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/admin/set-integration`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify(v ? { slug, key: k, value: v } : { slug, key: k }),
+      cache: 'no-store',
+    })
+    if (!res.ok) throw new Error(`${k}: HTTP ${res.status}`)
+  }
+  try {
+    // niesekrety — można czyścić (brak value = usunięcie klucza)
+    await setIntegration('wc_url', parsed.data.wcUrl || null)
+    await setIntegration('twilio_sms_number', parsed.data.twilioSmsNumber || null)
+    await setIntegration('messenger_page_id', parsed.data.messengerPageId || null)
+    // sekrety — tylko gdy podane (puste pole = bez zmian)
+    if (parsed.data.baselinkerToken) await setIntegration('baselinker_token', parsed.data.baselinkerToken)
+    if (parsed.data.wcConsumerKey) await setIntegration('wc_consumer_key', parsed.data.wcConsumerKey)
+    if (parsed.data.wcConsumerSecret) await setIntegration('wc_consumer_secret', parsed.data.wcConsumerSecret)
+    if (parsed.data.messengerPageToken) await setIntegration('messenger_page_token', parsed.data.messengerPageToken)
+    if (parsed.data.messengerAppSecret) await setIntegration('messenger_app_secret', parsed.data.messengerAppSecret)
+  } catch (e) {
+    return { ok: false, message: `Zapis nie powiódł się: ${e instanceof Error ? e.message : e}` }
+  }
   revalidatePath('/settings/integrations')
   revalidatePath('/settings')
-  return { ok: true, message: 'Zapisano integracje' }
+  return { ok: true, message: 'Zapisano integracje (sekrety zaszyfrowane)' }
 }
 
 // ─── IdoBooking credentials (per-scope multi-tenant) ────────────────────────
