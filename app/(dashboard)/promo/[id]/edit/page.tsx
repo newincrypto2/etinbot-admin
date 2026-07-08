@@ -5,8 +5,8 @@ import { ArrowLeft } from 'lucide-react'
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { PromoBarForm, type PromoBarValues } from '../../_components/PromoBarForm'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 /** Date → wartość dla <input type=datetime-local> w lokalnej strefie. */
 function toLocal(d: Date | null): string {
@@ -18,7 +18,7 @@ function toLocal(d: Date | null): string {
 export default async function EditPromoPage(props: { params: Promise<{ id: string }> }) {
   await requireAuth()
   const { id } = await props.params
-  const client = await prisma.clients.findUnique({ where: { slug: CLIENT_SLUG }, select: { id: true } })
+  const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) notFound()
   const b = await prisma.promo_bars.findFirst({ where: { id, client_id: client.id } })
   if (!b) notFound()

@@ -4,8 +4,8 @@ import { listEscalations, getEscalationStats } from '@/queries/escalations'
 import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { EscalationCard } from './_components/EscalationCard'
 import { ResolveAllButton } from './_components/ResolveAllButton'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const REASON_LABEL: Record<string, string> = {
   unknown_question: 'Nieznane pytanie',
@@ -30,8 +30,8 @@ export default async function EscalationsPage(props: { searchParams: SearchParam
   const reason = params.reason ?? 'all'
 
   const [rows, stats, role] = await Promise.all([
-    listEscalations({ clientSlug: CLIENT_SLUG, status, reason }),
-    getEscalationStats(CLIENT_SLUG),
+    listEscalations({ clientSlug: (await activeClientSlug()), status, reason }),
+    getEscalationStats((await activeClientSlug())),
     getCurrentRole(),
   ])
   const canEdit = hasRole(role, 'EDITOR')

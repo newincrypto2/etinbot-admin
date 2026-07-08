@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/lib/button-variants'
 import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { FaqRowActions } from './_components/FaqRowActions'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const SCOPE_LABEL: Record<string, string> = {
   both: 'oba',
@@ -35,10 +35,10 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
   const search = params.q ?? ''
 
   const [rows, stats, role, vertical] = await Promise.all([
-    listFaq({ clientSlug: CLIENT_SLUG, scope, category, search }),
-    getFaqStats(CLIENT_SLUG),
+    listFaq({ clientSlug: (await activeClientSlug()), scope, category, search }),
+    getFaqStats((await activeClientSlug())),
     getCurrentRole(),
-    getVertical(CLIENT_SLUG),
+    getVertical((await activeClientSlug())),
   ])
   const canEdit = hasRole(role, 'EDITOR')
   const isEcom = vertical === 'ecommerce'

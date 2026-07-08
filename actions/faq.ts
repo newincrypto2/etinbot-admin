@@ -8,6 +8,7 @@ import { embed, shortenForVoice, vectorLiteral } from '@/lib/ai-helpers'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq, type TargetLang } from '@/lib/translator'
+import { activeClientSlug } from '@/lib/tenant'
 
 // ---- Schema walidacji ----
 
@@ -148,7 +149,7 @@ export async function createFaq(_prev: ActionResult, fd: FormData): Promise<Acti
     return { ok: false, message: 'Błędy walidacji', errors }
   }
   const data = parsed.data
-  const clientSlug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const clientSlug = await activeClientSlug()
   const clientId = await getClientId(clientSlug)
 
   let createdId: string

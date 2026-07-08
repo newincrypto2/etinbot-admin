@@ -8,14 +8,14 @@ import { updateEscalation } from '@/actions/client'
 import { upsertEscalationRecipient, deleteEscalationRecipient } from '@/actions/notifications'
 import { EscalationForm } from './_components/EscalationForm'
 import { RecipientsList } from './_components/RecipientsList'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function EscalationSettingsPage() {
   await requireRole('OWNER')
   const [settings, recipients] = await Promise.all([
-    getClientSettings(CLIENT_SLUG),
-    listEscalationRecipients(CLIENT_SLUG),
+    getClientSettings((await activeClientSlug())),
+    listEscalationRecipients((await activeClientSlug())),
   ])
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 

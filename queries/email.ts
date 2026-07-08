@@ -1,11 +1,12 @@
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
 async function clientIdFromSlug(slug?: string): Promise<string> {
   // FAIL-CLOSED: brak/nieznany slug NIE może zdjąć filtra tenanta — wcześniej
   // zwracaliśmy null i listy pokazywały dane WSZYSTKICH tenantów (współdzielona DB).
-  if (!slug) throw new Error('Brak CLIENT_SLUG — panel wymaga przypisanego tenanta')
+  if (!slug) throw new Error('Brak (await activeClientSlug()) — panel wymaga przypisanego tenanta')
   const c = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
-  if (!c) throw new Error(`Nieznany tenant '${slug}' — sprawdź env CLIENT_SLUG`)
+  if (!c) throw new Error(`Nieznany tenant '${slug}' — sprawdź env (await activeClientSlug())`)
   return c.id
 }
 

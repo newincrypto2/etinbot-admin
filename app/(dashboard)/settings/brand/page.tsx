@@ -5,12 +5,12 @@ import { requireRole } from '@/lib/auth-helpers'
 import { getClientSettings } from '@/queries/client'
 import { updateBrand } from '@/actions/client'
 import { BrandForm } from './_components/BrandForm'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function BrandSettingsPage() {
   await requireRole('OWNER')
-  const settings = await getClientSettings(CLIENT_SLUG)
+  const settings = await getClientSettings((await activeClientSlug()))
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 
   return (

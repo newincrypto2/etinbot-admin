@@ -3,8 +3,8 @@ import { MessageCircle, AlertTriangle, CheckCircle2, Zap, TrendingUp, Sparkles, 
 
 import { getDashboardMetrics } from '@/queries/dashboard'
 import { fmtDateTime } from '@/lib/datetime'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', voice: 'Telefon', idobooking: 'IdoBooking',
@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 export default async function DashboardPage() {
-  const m = await getDashboardMetrics(CLIENT_SLUG)
+  const m = await getDashboardMetrics((await activeClientSlug()))
 
   // Cele referencyjne
   const autoResolveOk = m.autoResolveRate >= 60

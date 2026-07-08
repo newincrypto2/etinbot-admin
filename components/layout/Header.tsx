@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Menu, LogOut } from 'lucide-react'
 
 type HeaderProps = {
+  tenantSelector?: React.ReactNode
   user: {
     name?: string | null
     email?: string | null
@@ -29,7 +30,7 @@ function getAvatarColor(name: string) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-export function Header({ user, onMenuToggle }: HeaderProps) {
+export function Header({ user, tenantSelector, onMenuToggle }: HeaderProps) {
   const initials = user.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'U'
@@ -48,6 +49,7 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
+        {tenantSelector}
         <div className="hidden sm:flex items-center gap-2.5">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="text-xs font-medium" style={{ backgroundColor: avatarColor.bg, color: avatarColor.fg }}>

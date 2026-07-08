@@ -3,6 +3,7 @@ import { ExternalLink, Undo2, Package } from 'lucide-react'
 import { requireAuth } from '@/lib/auth-helpers'
 import { listAllegroReturns } from '@/queries/email'
 import { fmtFullDateTime } from '@/lib/datetime'
+import { activeClientSlug } from '@/lib/tenant'
 
 const RETURN_STATUS_LABEL: Record<string, string> = {
   CREATED: 'Utworzony',
@@ -15,11 +16,10 @@ const RETURN_STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'Anulowany',
 }
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'krainaherbaty'
 
 export default async function ZwrotyPage() {
   await requireAuth()
-  const returns = await listAllegroReturns({ clientSlug: CLIENT_SLUG, limit: 200 })
+  const returns = await listAllegroReturns({ clientSlug: (await activeClientSlug()), limit: 200 })
 
   return (
     <div className="space-y-6">

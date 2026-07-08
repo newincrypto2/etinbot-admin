@@ -6,8 +6,8 @@ import { buttonVariants } from '@/lib/button-variants'
 import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { ApartmentRowActions } from './_components/ApartmentRowActions'
 import { SyncButton } from './_components/SyncButton'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const BUILDING_LABEL: Record<string, string> = {
   'silver-place': 'Silver Place',
@@ -30,8 +30,8 @@ export default async function ApartmentsPage(props: { searchParams: SearchParams
   const search = params.q ?? ''
 
   const [rows, buildings, role] = await Promise.all([
-    listApartments({ clientSlug: CLIENT_SLUG, building, search }),
-    listBuildings(CLIENT_SLUG),
+    listApartments({ clientSlug: (await activeClientSlug()), building, search }),
+    listBuildings((await activeClientSlug())),
     getCurrentRole(),
   ])
   const canEdit = hasRole(role, 'EDITOR')

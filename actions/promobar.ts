@@ -5,8 +5,8 @@ import { z } from 'zod'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export type PromoActionResult = { ok: boolean; message: string; id?: string }
 
@@ -67,7 +67,7 @@ function dt(v: string | undefined): Date | null {
 }
 
 async function clientId(): Promise<string | null> {
-  const c = await prisma.clients.findUnique({ where: { slug: CLIENT_SLUG }, select: { id: true } })
+  const c = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   return c?.id ?? null
 }
 

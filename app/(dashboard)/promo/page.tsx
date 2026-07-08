@@ -5,12 +5,12 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { PromoRowActions } from './_components/PromoRowActions'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function PromoPage() {
   await requireAuth()
-  const client = await prisma.clients.findUnique({ where: { slug: CLIENT_SLUG }, select: { id: true } })
+  const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 
   const bars = await prisma.promo_bars.findMany({
@@ -133,7 +133,7 @@ export default async function PromoPage() {
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1">
         <div className="font-medium text-slate-700">Wdrożenie na stronę (raz):</div>
         <code className="block bg-white rounded border border-slate-200 px-3 py-2 font-mono text-[11px] overflow-x-auto">
-          {'<script src="https://etinbot.dewflow.cloud/api/promobar/widget.js" data-site="krainaherbaty" defer></script>'}
+          {`<script src="https://etinbot.dewflow.cloud/api/promobar/widget.js" data-site="${await activeClientSlug()}" defer></script>`}
         </code>
         <div>Pasek sam pilnuje harmonogramu, zegara i wykluczeń — nie trzeba nic zdejmować ręcznie.</div>
       </div>

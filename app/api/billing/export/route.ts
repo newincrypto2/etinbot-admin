@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth-helpers'
 import { getMarginMultiplier } from '@/lib/cost-format'
 import { getMonthlySummary } from '@/queries/costs'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return ''
@@ -45,9 +45,9 @@ export async function GET(req: NextRequest) {
   const margin = getMarginMultiplier()
 
   if (format === 'summary') {
-    const summary = await getMonthlySummary(CLIENT_SLUG, `${month.iso}-01`)
+    const summary = await getMonthlySummary((await activeClientSlug()), `${month.iso}-01`)
     const lines = [
-      `# EtinBOT — koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
+      `# EtinBOT — koszty ${month.iso} — klient: ${(await activeClientSlug())}`,
       csvRow(['service', 'units', 'unit_type', 'cost_pln']),
     ]
     for (const r of summary.byService) {
@@ -92,14 +92,14 @@ export async function GET(req: NextRequest) {
            cc.external_id
     FROM conversation_costs cc
     JOIN clients c ON c.id = cc.client_id
-    WHERE c.slug = ${CLIENT_SLUG}
+    WHERE c.slug = ${(await activeClientSlug())}
       AND cc.created_at >= ${month.start}
       AND cc.created_at < ${month.end}
     ORDER BY cc.created_at ASC
   `
 
   const lines = [
-    `# EtinBOT — detail koszty ${month.iso} — klient: ${CLIENT_SLUG}`,
+    `# EtinBOT — detail koszty ${month.iso} — klient: ${(await activeClientSlug())}`,
     csvRow([
       'created_at',
       'conversation_id',

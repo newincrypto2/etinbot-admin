@@ -5,8 +5,8 @@ import { listEmailThreads, getEmailStats, getMailboxes, listFilteredMails } from
 import { fmtDateTime } from '@/lib/datetime'
 import { ComposeButton } from './_components/ComposeButton'
 import { FilteredMailRow } from './_components/FilteredMailRow'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'krainaherbaty'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   open: { label: 'Otwarta', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
@@ -30,10 +30,10 @@ export default async function PocztaPage(props: { searchParams: SearchParams }) 
 
   const isSpamView = view === 'spam'
   const [res, stats, mailboxes, filtered] = await Promise.all([
-    listEmailThreads({ clientSlug: CLIENT_SLUG, view: isSpamView ? 'inbox' : view, search: q, page, pageSize: 25 }),
-    getEmailStats(CLIENT_SLUG),
-    getMailboxes(CLIENT_SLUG),
-    isSpamView ? listFilteredMails({ clientSlug: CLIENT_SLUG, limit: 200 }) : Promise.resolve([]),
+    listEmailThreads({ clientSlug: (await activeClientSlug()), view: isSpamView ? 'inbox' : view, search: q, page, pageSize: 25 }),
+    getEmailStats((await activeClientSlug())),
+    getMailboxes((await activeClientSlug())),
+    isSpamView ? listFilteredMails({ clientSlug: (await activeClientSlug()), limit: 200 }) : Promise.resolve([]),
   ])
   const { items, total, pageSize } = res
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

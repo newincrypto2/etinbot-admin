@@ -8,8 +8,8 @@ import {
 } from '@/queries/costs'
 import { fmtPln, fmtUnits, serviceName, withMargin } from '@/lib/cost-format'
 import { fmtDateShort } from '@/lib/datetime'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp',
@@ -44,9 +44,9 @@ export default async function BillingPage(props: {
   const ym = monthRaw.slice(0, 7)
 
   const [summary, top, available] = await Promise.all([
-    getMonthlySummary(CLIENT_SLUG, monthRaw),
-    getTopConversations(CLIENT_SLUG, monthRaw, 5),
-    getAvailableMonths(CLIENT_SLUG),
+    getMonthlySummary((await activeClientSlug()), monthRaw),
+    getTopConversations((await activeClientSlug()), monthRaw, 5),
+    getAvailableMonths((await activeClientSlug())),
   ])
 
   // Wstaw bieżący miesiąc jeśli nie ma jeszcze rekordów (żeby selector pokazał obecny)

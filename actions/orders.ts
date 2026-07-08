@@ -2,6 +2,7 @@
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import type { SyncResult } from '@/actions/products'
+import { activeClientSlug } from '@/lib/tenant'
 
 /** Ręczne uruchomienie syncu zamówień — woła backend EtinBOT (POST /api/admin/sync-orders). */
 export async function triggerOrderSync(): Promise<SyncResult> {
@@ -13,7 +14,7 @@ export async function triggerOrderSync(): Promise<SyncResult> {
   if (!base || !key) {
     return { ok: false, message: 'Brak konfiguracji BOT_API_URL / BOT_API_KEY w env panelu.' }
   }
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
 
   try {
     const res = await fetch(`${base.replace(/\/$/, '')}/api/admin/sync-orders`, {

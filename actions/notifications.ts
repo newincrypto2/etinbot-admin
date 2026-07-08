@@ -6,8 +6,8 @@ import { z } from 'zod'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import type { ActionResult } from '@/actions/client'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const PhoneSchema = z
   .string()
@@ -66,7 +66,7 @@ export async function upsertEscalationRecipient(
   }
 
   const data = parsed.data
-  const client = await prisma.clients.findUnique({ where: { slug: CLIENT_SLUG }, select: { id: true } })
+  const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) return { ok: false, message: 'Klient nie znaleziony' }
 
   const phoneNormalized = _normalizePhone(data.phone)

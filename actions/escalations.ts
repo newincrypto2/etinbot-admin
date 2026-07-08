@@ -8,6 +8,7 @@ import { embed, shortenForVoice, vectorLiteral } from '@/lib/ai-helpers'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq } from '@/lib/translator'
+import { activeClientSlug } from '@/lib/tenant'
 
 export type ActionResult = { ok: boolean; message?: string; errors?: Record<string, string> }
 
@@ -187,14 +188,13 @@ export async function acceptEscalationAsFaq(
 
 // ---- Bulk resolve (zbiorcze rozwiązanie przefiltrowanych) ----
 
-const BULK_CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export async function resolveAllUnresolved(reason: string): Promise<ActionResult> {
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const client = await prisma.clients.findUnique({
-    where: { slug: BULK_CLIENT_SLUG },
+    where: { slug: (await activeClientSlug()) },
     select: { id: true },
   })
   if (!client) return { ok: false, message: 'Brak klienta' }

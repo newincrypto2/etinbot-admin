@@ -13,8 +13,8 @@ import { upsertIdobookingCreds, upsertEcommerceIntegrations } from '@/actions/cl
 import { fmtDateTime } from '@/lib/datetime'
 import { IdobookingForm } from './_components/IdobookingForm'
 import { EcommerceIntegrationsForm } from './_components/EcommerceIntegrationsForm'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const SCOPE_META: Record<string, { label: string; description: string; color: string }> = {
   'silver-place': {
@@ -31,10 +31,10 @@ const SCOPE_META: Record<string, { label: string; description: string; color: st
 
 export default async function IntegrationsSettingsPage() {
   await requireRole('OWNER')
-  const vertical = await getVertical(CLIENT_SLUG)
+  const vertical = await getVertical((await activeClientSlug()))
 
   if (vertical === 'ecommerce') {
-    const ecom = await getEcommerceIntegrations(CLIENT_SLUG)
+    const ecom = await getEcommerceIntegrations((await activeClientSlug()))
     if (!ecom) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
     return (
       <div className="max-w-3xl space-y-6">
@@ -99,8 +99,8 @@ export default async function IntegrationsSettingsPage() {
 
   // ─── Rental (Silver Place wzorzec) — IdoBooking per budynek ───
   const [settings, creds] = await Promise.all([
-    getClientSettings(CLIENT_SLUG),
-    listIdobookingCreds(CLIENT_SLUG),
+    getClientSettings((await activeClientSlug())),
+    listIdobookingCreds((await activeClientSlug())),
   ])
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 

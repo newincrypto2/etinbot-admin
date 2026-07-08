@@ -2,11 +2,11 @@ import { GraduationCap } from 'lucide-react'
 
 import { listFaqCandidates } from '@/queries/email'
 import { CandidateCard } from './_components/CandidateCard'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'krainaherbaty'
 
 export default async function FaqNaukaPage() {
-  const candidates = await listFaqCandidates({ clientSlug: CLIENT_SLUG, status: 'pending' })
+  const candidates = await listFaqCandidates({ clientSlug: (await activeClientSlug()), status: 'pending' })
 
   return (
     <div className="max-w-4xl space-y-6">

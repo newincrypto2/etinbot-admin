@@ -3,8 +3,8 @@ import { MessageCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 import { listConversations, getConversationStats } from '@/queries/conversations'
 import { fmtDateTime } from '@/lib/datetime'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp',
@@ -43,8 +43,8 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
   const search = params.q ?? ''
 
   const [rows, stats] = await Promise.all([
-    listConversations({ clientSlug: CLIENT_SLUG, status, channel, search, limit: 200 }),
-    getConversationStats(CLIENT_SLUG),
+    listConversations({ clientSlug: (await activeClientSlug()), status, channel, search, limit: 200 }),
+    getConversationStats((await activeClientSlug())),
   ])
 
   return (

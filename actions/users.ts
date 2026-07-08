@@ -65,12 +65,14 @@ export async function createUser(_prev: ActionResult, fd: FormData): Promise<Act
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12)
+  const { activeClientId } = await import('@/lib/tenant')
   await prisma.adminUser.create({
     data: {
       email: parsed.data.email,
       name: parsed.data.name,
       passwordHash,
       role: parsed.data.role,
+      clientId: await activeClientId(),  // user nalezy do aktywnego tenanta
     },
   })
   revalidatePath('/settings/users')

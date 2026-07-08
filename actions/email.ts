@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
 /** Imię i nazwisko zalogowanego użytkownika (do podpisu maila). */
 async function currentUserName(): Promise<string | undefined> {
@@ -306,7 +307,7 @@ export async function composeEmail(input: {
 }): Promise<EmailActionResult & { conversationId?: string }> {
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
-  const slug = process.env.CLIENT_SLUG ?? 'krainaherbaty'
+  const slug = await activeClientSlug()
   const r = await callBackend('/api/email/compose', {
     slug,
     mailbox_address: input.mailboxAddress,

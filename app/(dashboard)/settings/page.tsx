@@ -3,19 +3,19 @@ import { Users, Key, MessageSquareText, Phone } from 'lucide-react'
 
 import { requireRole } from '@/lib/auth-helpers'
 import { getClientSettings, getEcommerceIntegrations } from '@/queries/client'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function SettingsPage() {
   await requireRole('OWNER')
-  const settings = await getClientSettings(CLIENT_SLUG)
+  const settings = await getClientSettings((await activeClientSlug()))
 
   if (!settings) {
     return <div className="p-8 text-slate-500">Brak danych klienta.</div>
   }
 
   const isEcom = settings.vertical === 'ecommerce'
-  const ecom = isEcom ? await getEcommerceIntegrations(CLIENT_SLUG) : null
+  const ecom = isEcom ? await getEcommerceIntegrations((await activeClientSlug())) : null
 
   return (
     <div className="space-y-6">

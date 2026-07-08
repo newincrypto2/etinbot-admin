@@ -1,6 +1,7 @@
 'use server'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { activeClientSlug } from '@/lib/tenant'
 
 export type SyncResult = { ok: boolean; message: string }
 
@@ -15,7 +16,7 @@ export async function triggerProductSync(): Promise<SyncResult> {
   if (!base || !key) {
     return { ok: false, message: 'Brak konfiguracji BOT_API_URL / BOT_API_KEY w env panelu.' }
   }
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
 
   try {
     const res = await fetch(`${base.replace(/\/$/, '')}/api/admin/sync-products`, {

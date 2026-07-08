@@ -5,13 +5,13 @@ import { listCategories } from '@/queries/faq'
 import { getVertical } from '@/queries/client'
 import { createFaq } from '@/actions/faq'
 import { FaqForm } from '../_components/FaqForm'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function NewFaqPage() {
   const [categories, vertical] = await Promise.all([
-    listCategories(CLIENT_SLUG),
-    getVertical(CLIENT_SLUG),
+    listCategories((await activeClientSlug())),
+    getVertical((await activeClientSlug())),
   ])
 
   return (

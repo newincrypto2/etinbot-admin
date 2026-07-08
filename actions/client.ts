@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
 const BrandSchema = z.object({
   botName: z.string().min(1).max(50),
@@ -77,7 +78,7 @@ export async function updateBrand(_prev: ActionResult, fd: FormData): Promise<Ac
   }
   const guard = await assertRoleOrFail('OWNER')
   if (!guard.ok) return { ok: false, message: guard.message }
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const id = await getClientIdBySlug(slug)
   await prisma.clients.update({
     where: { id },
@@ -106,7 +107,7 @@ export async function updateEscalation(_prev: ActionResult, fd: FormData): Promi
   }
   const guard = await assertRoleOrFail('OWNER')
   if (!guard.ok) return { ok: false, message: guard.message }
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const id = await getClientIdBySlug(slug)
   await prisma.clients.update({
     where: { id },
@@ -135,7 +136,7 @@ export async function updateIntegrations(_prev: ActionResult, fd: FormData): Pro
   const guard = await assertRoleOrFail('OWNER')
   if (!guard.ok) return { ok: false, message: guard.message }
 
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const id = await getClientIdBySlug(slug)
 
   // TODO Sprint 2: szyfrowanie API key (pgcrypto AES-256). Na razie plaintext.
@@ -178,7 +179,7 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
     return { ok: false, message: 'Błędy walidacji', errors }
   }
 
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const client = await prisma.clients.findUnique({ where: { slug }, select: { id: true, config: true } })
   if (!client) return { ok: false, message: `Klient ${slug} nie znaleziony` }
 
@@ -223,7 +224,7 @@ export async function upsertIdobookingCreds(_prev: ActionResult, fd: FormData): 
     return { ok: false, message: 'Błędy walidacji', errors }
   }
   const data = parsed.data
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const clientId = await getClientIdBySlug(slug)
 
   // Sprawdź czy istnieje
@@ -271,7 +272,7 @@ export async function deleteIdobookingCreds(scope: 'silver-place' | 'silver-fore
   const guard = await assertRoleOrFail('OWNER')
   if (!guard.ok) return { ok: false, message: guard.message }
 
-  const slug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const slug = await activeClientSlug()
   const clientId = await getClientIdBySlug(slug)
 
   await prisma.idobooking_credentials.deleteMany({

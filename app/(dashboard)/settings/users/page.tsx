@@ -21,7 +21,10 @@ export default async function UsersPage() {
   const session = await auth()
   const currentEmail = session?.user?.email ?? null
 
+  const { activeClientId } = await import('@/lib/tenant')
+  const clientId = await activeClientId()
   const users = await prisma.adminUser.findMany({
+    where: { OR: [{ clientId }, { clientId: null }] },  // userzy tenanta + globalni (superadmin)
     orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
   })
 

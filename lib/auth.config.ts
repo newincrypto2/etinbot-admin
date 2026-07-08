@@ -12,12 +12,14 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id
         token.role = (user as any).role
+        token.clientId = (user as any).clientId ?? null
       }
       return token
     },
     session({ session, token }) {
       session.user.id = token.id as string
       session.user.role = token.role as string
+      ;(session.user as any).clientId = (token.clientId as string | null) ?? null
       return session
     },
   },

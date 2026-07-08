@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
 const BUILDINGS = ['silver-place', 'silver-forest'] as const
 const ACCESS_METHODS = ['smartlock', 'lockbox', 'reception', 'static_code'] as const
@@ -107,7 +108,7 @@ export async function createApartment(_prev: ActionResult, fd: FormData): Promis
     return { ok: false, message: 'Błędy walidacji', errors }
   }
 
-  const clientSlug = process.env.CLIENT_SLUG ?? 'matysproperty'
+  const clientSlug = await activeClientSlug()
   const clientId = await getClientId(clientSlug)
 
   try {

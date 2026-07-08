@@ -5,8 +5,8 @@ import { getProductStats, listProducts, findAttr } from '@/queries/products'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { SyncButton } from '@/components/SyncButton'
 import { triggerProductSync } from '@/actions/products'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 const PAGE_SIZE = 50
 
 type SearchParams = Promise<{ q?: string; stock?: string; page?: string }>
@@ -24,8 +24,8 @@ export default async function ProductsPage(props: { searchParams: SearchParams }
   const page = Math.max(1, Number(params.page) || 1)
 
   const [stats, result] = await Promise.all([
-    getProductStats(CLIENT_SLUG),
-    listProducts({ clientSlug: CLIENT_SLUG, search, stock, page, pageSize: PAGE_SIZE }),
+    getProductStats((await activeClientSlug())),
+    listProducts({ clientSlug: (await activeClientSlug()), search, stock, page, pageSize: PAGE_SIZE }),
   ])
 
   const { rows, total, pageSize } = result

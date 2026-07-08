@@ -7,16 +7,16 @@ import { getVertical } from '@/queries/client'
 import { updateFaq } from '@/actions/faq'
 import { FaqForm } from '../../_components/FaqForm'
 import { TranslationsSection } from './_components/TranslationsSection'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 
 export default async function EditFaqPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
   const [faq, categories, translations, vertical] = await Promise.all([
     getFaqById(id),
-    listCategories(CLIENT_SLUG),
+    listCategories((await activeClientSlug())),
     listTranslations(id),
-    getVertical(CLIENT_SLUG),
+    getVertical((await activeClientSlug())),
   ])
   if (!faq) notFound()
 

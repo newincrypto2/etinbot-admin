@@ -5,8 +5,8 @@ import { fmtFullDateTime } from '@/lib/datetime'
 import { SyncButton } from '@/components/SyncButton'
 import { triggerOrderSync } from '@/actions/orders'
 import { Search } from 'lucide-react'
+import { activeClientSlug } from '@/lib/tenant'
 
-const CLIENT_SLUG = process.env.CLIENT_SLUG ?? 'matysproperty'
 const PAGE_SIZE = 25
 
 type SearchParams = Promise<{ q?: string; page?: string }>
@@ -18,7 +18,7 @@ export default async function OrdersPage(props: { searchParams: SearchParams }) 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
   const client = await prisma.clients.findUnique({
-    where: { slug: CLIENT_SLUG },
+    where: { slug: (await activeClientSlug()) },
     select: { id: true },
   })
   if (!client) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
