@@ -17,6 +17,7 @@ import {
   Undo2,
   X,
   Megaphone,
+  Building2,
 } from 'lucide-react'
 
 const navItems = [
@@ -86,6 +87,15 @@ export function Sidebar({ role, open, onClose }: SidebarProps) {
                 Admin
               </span>
             </div>
+            {role === 'SUPERADMIN' && (
+              <NavLink
+                href="/clients"
+                label="Klienci"
+                icon={<Building2 className="h-[18px] w-[18px]" />}
+                active={pathname.startsWith('/clients')}
+                onClick={onClose}
+              />
+            )}
             {adminItems.map(({ href, label, icon: Icon }) => (
               <NavLink
                 key={href}

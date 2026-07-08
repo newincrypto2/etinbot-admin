@@ -66,6 +66,7 @@ model clients {
   name                      String
   slug                      String                   @unique
   plan                      String                   @default("mvp")
+  active                    Boolean                  @default(true)
   vertical                  String?                  @default("rental")
   config                    Json?
   enabled_channels          Json?
