@@ -144,6 +144,29 @@ export function ClientWizard() {
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((prev) => ({ ...prev, [k]: v }))
 
+  // Które pola formularza należą do której sekcji testu integracji.
+  // Zmiana dowolnego pola sekcji czyści (stale) wynik testu tej sekcji.
+  const FIELD_TO_INTEGRATION: Partial<Record<keyof Form, 'woocommerce' | 'baselinker' | 'email' | 'messenger'>> = {
+    wcUrl: 'woocommerce', wcConsumerKey: 'woocommerce', wcConsumerSecret: 'woocommerce',
+    baselinkerToken: 'baselinker',
+    messengerPageId: 'messenger', messengerPageToken: 'messenger',
+    emailAddress: 'email', emailProvider: 'email', emailImapHost: 'email', emailImapPort: 'email',
+    emailImapUser: 'email', emailImapPass: 'email', emailSmtpHost: 'email', emailSmtpPort: 'email',
+  }
+
+  // Setter dla pól integracji — po edycji kasuje wynik testu danej sekcji,
+  // żeby czerwony błąd nie wisiał (stale) po poprawieniu credsów.
+  const setInteg = <K extends keyof Form>(k: K, v: Form[K]) => {
+    setF((prev) => ({ ...prev, [k]: v }))
+    const integ = FIELD_TO_INTEGRATION[k]
+    if (integ) setTests((t) => {
+      if (!t[integ]) return t
+      const next = { ...t }
+      delete next[integ]
+      return next
+    })
+  }
+
   const onNameChange = (v: string) => {
     setF((prev) => ({
       ...prev,
@@ -367,43 +390,43 @@ export function ClientWizard() {
             <p className="text-sm text-slate-500">Wszystkie integracje są opcjonalne — możesz pominąć i uzupełnić później w ustawieniach.</p>
 
             <IntegrationSection title="WooCommerce" test={tests.woocommerce} onTest={() => runTest('woocommerce')} canTest={!!(f.wcUrl && f.wcConsumerKey && f.wcConsumerSecret)}>
-              <Field label="Adres sklepu (URL)"><input className={inputCls} value={f.wcUrl} onChange={(e) => set('wcUrl', e.target.value)} placeholder="https://sklep.pl" /></Field>
-              <Field label="Consumer key"><input className={inputCls} value={f.wcConsumerKey} onChange={(e) => set('wcConsumerKey', e.target.value)} placeholder="ck_..." /></Field>
-              <Field label="Consumer secret"><input className={inputCls} type="password" value={f.wcConsumerSecret} onChange={(e) => set('wcConsumerSecret', e.target.value)} placeholder="cs_..." /></Field>
+              <Field label="Adres sklepu (URL)"><input className={inputCls} autoComplete="off" value={f.wcUrl} onChange={(e) => setInteg('wcUrl', e.target.value)} placeholder="https://sklep.pl" /></Field>
+              <Field label="Consumer key"><input className={inputCls} autoComplete="off" value={f.wcConsumerKey} onChange={(e) => setInteg('wcConsumerKey', e.target.value)} placeholder="ck_..." /></Field>
+              <Field label="Consumer secret"><input className={inputCls} type="password" autoComplete="new-password" value={f.wcConsumerSecret} onChange={(e) => setInteg('wcConsumerSecret', e.target.value)} placeholder="cs_..." /></Field>
             </IntegrationSection>
 
             <IntegrationSection title="BaseLinker" test={tests.baselinker} onTest={() => runTest('baselinker')} canTest={!!f.baselinkerToken}>
-              <Field label="Token API"><input className={inputCls} type="password" value={f.baselinkerToken} onChange={(e) => set('baselinkerToken', e.target.value)} /></Field>
+              <Field label="Token API"><input className={inputCls} type="password" autoComplete="new-password" value={f.baselinkerToken} onChange={(e) => setInteg('baselinkerToken', e.target.value)} /></Field>
             </IntegrationSection>
 
             <IntegrationSection title="Skrzynka e-mail" test={tests.email} onTest={() => runTest('email')} canTest={!!f.emailAddress}>
-              <Field label="Adres e-mail"><input className={inputCls} value={f.emailAddress} onChange={(e) => set('emailAddress', e.target.value)} placeholder="sklep@firma.pl" /></Field>
+              <Field label="Adres e-mail"><input className={inputCls} autoComplete="off" value={f.emailAddress} onChange={(e) => setInteg('emailAddress', e.target.value)} placeholder="sklep@firma.pl" /></Field>
               <Field label="Provider">
-                <select className={inputCls} value={f.emailProvider} onChange={(e) => set('emailProvider', e.target.value as 'gmail' | 'imap')}>
+                <select className={inputCls} value={f.emailProvider} onChange={(e) => setInteg('emailProvider', e.target.value as 'gmail' | 'imap')}>
                   <option value="imap">IMAP/SMTP</option>
                   <option value="gmail">Gmail (service account)</option>
                 </select>
               </Field>
               {f.emailProvider === 'imap' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="IMAP host"><input className={inputCls} value={f.emailImapHost} onChange={(e) => set('emailImapHost', e.target.value)} placeholder="imap.firma.pl" /></Field>
-                  <Field label="IMAP port"><input className={inputCls} value={f.emailImapPort} onChange={(e) => set('emailImapPort', e.target.value)} placeholder="993" /></Field>
-                  <Field label="IMAP użytkownik"><input className={inputCls} value={f.emailImapUser} onChange={(e) => set('emailImapUser', e.target.value)} placeholder="(domyślnie = adres)" /></Field>
-                  <Field label="IMAP hasło"><input className={inputCls} type="password" value={f.emailImapPass} onChange={(e) => set('emailImapPass', e.target.value)} /></Field>
-                  <Field label="SMTP host"><input className={inputCls} value={f.emailSmtpHost} onChange={(e) => set('emailSmtpHost', e.target.value)} placeholder="smtp.firma.pl" /></Field>
-                  <Field label="SMTP port"><input className={inputCls} value={f.emailSmtpPort} onChange={(e) => set('emailSmtpPort', e.target.value)} placeholder="587" /></Field>
+                  <Field label="IMAP host"><input className={inputCls} autoComplete="off" value={f.emailImapHost} onChange={(e) => setInteg('emailImapHost', e.target.value)} placeholder="imap.firma.pl" /></Field>
+                  <Field label="IMAP port"><input className={inputCls} autoComplete="off" value={f.emailImapPort} onChange={(e) => setInteg('emailImapPort', e.target.value)} placeholder="993" /></Field>
+                  <Field label="IMAP użytkownik"><input className={inputCls} autoComplete="off" value={f.emailImapUser} onChange={(e) => setInteg('emailImapUser', e.target.value)} placeholder="(domyślnie = adres)" /></Field>
+                  <Field label="IMAP hasło"><input className={inputCls} type="password" autoComplete="new-password" value={f.emailImapPass} onChange={(e) => setInteg('emailImapPass', e.target.value)} /></Field>
+                  <Field label="SMTP host"><input className={inputCls} autoComplete="off" value={f.emailSmtpHost} onChange={(e) => setInteg('emailSmtpHost', e.target.value)} placeholder="smtp.firma.pl" /></Field>
+                  <Field label="SMTP port"><input className={inputCls} autoComplete="off" value={f.emailSmtpPort} onChange={(e) => setInteg('emailSmtpPort', e.target.value)} placeholder="587" /></Field>
                 </div>
               )}
             </IntegrationSection>
 
             <IntegrationSection title="Messenger" test={tests.messenger} onTest={() => runTest('messenger')} canTest={!!(f.messengerPageId && f.messengerPageToken)}>
-              <Field label="Page ID"><input className={inputCls} value={f.messengerPageId} onChange={(e) => set('messengerPageId', e.target.value)} /></Field>
-              <Field label="Page token"><input className={inputCls} type="password" value={f.messengerPageToken} onChange={(e) => set('messengerPageToken', e.target.value)} /></Field>
+              <Field label="Page ID"><input className={inputCls} autoComplete="off" value={f.messengerPageId} onChange={(e) => setInteg('messengerPageId', e.target.value)} /></Field>
+              <Field label="Page token"><input className={inputCls} type="password" autoComplete="new-password" value={f.messengerPageToken} onChange={(e) => setInteg('messengerPageToken', e.target.value)} /></Field>
             </IntegrationSection>
 
             <div className="rounded-lg border border-slate-200 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-slate-700">Twilio SMS i dostawa</h3>
-              <Field label="Numer Twilio (SMS)"><input className={inputCls} value={f.twilioSmsNumber} onChange={(e) => set('twilioSmsNumber', e.target.value)} placeholder="+48..." /></Field>
+              <Field label="Numer Twilio (SMS)"><input className={inputCls} autoComplete="off" value={f.twilioSmsNumber} onChange={(e) => set('twilioSmsNumber', e.target.value)} placeholder="+48..." /></Field>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Próg darmowej dostawy (PLN)"><input className={inputCls} value={f.freeShippingThreshold} onChange={(e) => set('freeShippingThreshold', e.target.value)} placeholder="99" /></Field>
                 <Field label="Cutoff wysyłki"><input className={inputCls} value={f.shippingCutoff} onChange={(e) => set('shippingCutoff', e.target.value)} placeholder="do 12:00 = dziś" /></Field>
