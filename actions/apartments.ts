@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
+import { callBackend } from '@/lib/backend'
 
 const BUILDINGS = ['silver-place', 'silver-forest'] as const
 const ACCESS_METHODS = ['smartlock', 'lockbox', 'reception', 'static_code'] as const
@@ -161,22 +162,39 @@ export async function deleteApartment(id: string): Promise<ActionResult> {
 }
 
 /**
- * Stub synchronizacji z IdoBooking.
- *
- * Faktyczna implementacja w `silverplace-bot/scripts/sync_apartments_from_ido.py`
- * — wywołuje IdoBooking `Objects.getAll`, mapuje na nasz schema, upsert do `apartments`.
- *
- * Tutaj tylko logika UI: triggerujemy backend cron (TODO: HTTP call do bota).
- * Na razie zwracamy informację o stanie.
+ * Synchronizacja apartamentów z IdoBooking.
+ * Woła backend bota `POST /api/admin/sync-apartments {slug}` (IdoBooking Objects.getAll
+ * → upsert do `apartments`). Sync per AKTYWNY tenant. Fail-safe: błąd = komunikat, brak throw.
  */
 export async function syncFromIdoBooking(): Promise<ActionResult> {
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
 
-  // TODO Sprint 2: HTTP POST do bota /api/admin/sync-apartments
-  // z autoryzacją przez BOT_API_KEY.
-  return {
-    ok: false,
-    message: 'Sync z IdoBooking nieaktywny — czeka na klucz API od brata. Setup w silverplace-bot/.env (IDOBOOKING_TENANT, IDOBOOKING_LOGIN, IDOBOOKING_API_KEY).',
+  const slug = await activeClientSlug()
+  const r = await callBackend('/api/admin/sync-apartments', { slug })
+  if (!r.ok) {
+    return { ok: false, message: `Sync apartamentów nieudany (${r.status}). ${r.text.slice(0, 160)}` }
   }
+  const count = typeof r.data.count === 'number' ? r.data.count : undefined
+  revalidatePath('/apartments')
+  return { ok: true, message: count != null ? `Zsynchronizowano ${count} apartamentów.` : 'Synchronizacja apartamentów uruchomiona.' }
+}
+
+/**
+ * Synchronizacja rezerwacji z IdoBooking.
+ * Woła backend bota `POST /api/admin/sync-reservations {slug}` → upsert do `reservations_cache`.
+ * Sync per AKTYWNY tenant. Fail-safe.
+ */
+export async function syncReservationsFromIdoBooking(): Promise<ActionResult & { message: string }> {
+  const guard = await assertRoleOrFail('EDITOR')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const slug = await activeClientSlug()
+  const r = await callBackend('/api/admin/sync-reservations', { slug })
+  if (!r.ok) {
+    return { ok: false, message: `Sync rezerwacji nieudany (${r.status}). ${r.text.slice(0, 160)}` }
+  }
+  const count = typeof r.data.count === 'number' ? r.data.count : undefined
+  revalidatePath('/reservations')
+  return { ok: true, message: count != null ? `Zsynchronizowano ${count} rezerwacji.` : 'Synchronizacja rezerwacji uruchomiona.' }
 }

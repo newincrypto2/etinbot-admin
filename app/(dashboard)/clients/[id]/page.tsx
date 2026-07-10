@@ -17,6 +17,8 @@ import { ConfigViewer } from './_components/ConfigViewer'
 import { ConfigForms } from './_components/ConfigForms'
 import { AllegroConnect } from './_components/AllegroConnect'
 import { SwitchAndSettingsLink } from './_components/SwitchAndSettingsLink'
+import { IdoBookingCreds } from './_components/IdoBookingCreds'
+import { listIdoBookingCredentials } from '@/actions/idobooking'
 
 type Params = Promise<{ id: string }>
 type Search = Promise<{ tab?: string }>
@@ -60,6 +62,9 @@ export default async function ClientCardPage(props: { params: Params; searchPara
   const users = tab === 'users' ? await listClientUsers(client.id) : []
   const configForms =
     tab === 'config' || tab === 'integrations' ? await getClientConfigForms(slug) : null
+  // IdoBooking creds — tylko rental, tylko na zakładce Integracje.
+  const idoCreds =
+    tab === 'integrations' && client.vertical === 'rental' ? await listIdoBookingCredentials(slug) : null
 
   return (
     <div className="space-y-6">
@@ -150,6 +155,13 @@ export default async function ClientCardPage(props: { params: Params; searchPara
       {/* ── INTEGRACJE ── */}
       {tab === 'integrations' && (
         <div className="space-y-5">
+          {client.vertical === 'rental' && (
+            <IdoBookingCreds
+              slug={slug}
+              initial={idoCreds?.items ?? []}
+              loadError={idoCreds && !idoCreds.ok ? idoCreds.message : undefined}
+            />
+          )}
           {healthRes && !healthRes.ok && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-700">{healthRes.error}</div>
           )}

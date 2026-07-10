@@ -6,16 +6,18 @@ import { Header } from '@/components/layout/Header'
 type DashboardShellProps = {
   user: { name?: string | null; email?: string | null; role: string }
   tenantSelector?: React.ReactNode
+  vertical?: string | null
   children: React.ReactNode
 }
 
-export function DashboardShell({ user, tenantSelector, children }: DashboardShellProps) {
+export function DashboardShell({ user, tenantSelector, vertical, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex h-screen bg-gray-50/80 overflow-hidden">
       <Sidebar
         role={user.role}
+        vertical={vertical}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

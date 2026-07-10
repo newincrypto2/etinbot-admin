@@ -33,6 +33,11 @@ type Form = {
   companyNip: string
   escalationPhone: string
   escalationEmail: string
+  escalationSecurityPhone: string
+  idoScope: string
+  idoTenant: string
+  idoLogin: string
+  idoPassword: string
   wcUrl: string
   wcConsumerKey: string
   wcConsumerSecret: string
@@ -63,7 +68,8 @@ type Form = {
 const EMPTY: Form = {
   name: '', slug: '', vertical: 'ecommerce', languages: ['pl'], primaryLanguage: 'pl', officeHours: 'pon-pt 9-17',
   botName: '', personaDesc: '', greeting: '', companyLegalName: '', companyAddress: '', companyNip: '',
-  escalationPhone: '', escalationEmail: '',
+  escalationPhone: '', escalationEmail: '', escalationSecurityPhone: '',
+  idoScope: 'default', idoTenant: '', idoLogin: '', idoPassword: '',
   wcUrl: '', wcConsumerKey: '', wcConsumerSecret: '', baselinkerToken: '', twilioSmsNumber: '',
   messengerPageId: '', messengerPageToken: '',
   emailAddress: '', emailProvider: 'imap', emailImapHost: '', emailImapPort: '', emailImapUser: '',
@@ -105,13 +111,20 @@ const LANGS = [
   { v: 'de', label: 'Niemiecki' },
 ]
 
-const CHANNELS = [
+const ECOMMERCE_CHANNELS = [
   { v: 'webchat', label: 'Webchat' },
   { v: 'email', label: 'E-mail' },
   { v: 'messenger', label: 'Messenger' },
   { v: 'sms', label: 'SMS' },
   { v: 'voice', label: 'Voice' },
   { v: 'allegro', label: 'Allegro' },
+]
+
+const RENTAL_CHANNELS = [
+  { v: 'whatsapp', label: 'WhatsApp' },
+  { v: 'sms', label: 'SMS' },
+  { v: 'voice', label: 'Voice' },
+  { v: 'email', label: 'E-mail' },
 ]
 
 const STEPS = ['Podstawy', 'Brand & bot', 'Integracje', 'Kanały', 'Wiedza', 'Podsumowanie']
@@ -185,6 +198,18 @@ export function ClientWizard() {
   }>({ phase: 'idle' })
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((prev) => ({ ...prev, [k]: v }))
+
+  // Zmiana verticala — przełącza domyślne kanały, jeśli user nie ruszył jeszcze
+  // domyślnego zestawu drugiego verticala (ecommerce=['webchat'], rental=['whatsapp']).
+  const selectVertical = (v: 'ecommerce' | 'rental') =>
+    setF((prev) => {
+      let channels = prev.enabledChannels
+      const isDefaultEcom = channels.length === 0 || (channels.length === 1 && channels[0] === 'webchat')
+      const isDefaultRental = channels.length === 0 || (channels.length === 1 && channels[0] === 'whatsapp')
+      if (v === 'rental' && isDefaultEcom) channels = ['whatsapp']
+      if (v === 'ecommerce' && isDefaultRental) channels = ['webchat']
+      return { ...prev, vertical: v, enabledChannels: channels }
+    })
 
   // ── VAT: edytor wierszy klasa→stawka ──
   const setVatRow = (i: number, field: 'name' | 'rate', v: string) =>
@@ -449,13 +474,13 @@ export function ClientWizard() {
               {slugStatus.available === true && <span className="text-xs text-emerald-600 mt-1 inline-flex items-center gap-1"><Check className="h-3 w-3" /> {slugStatus.message}</span>}
               {slugStatus.available === false && <span className="text-xs text-red-600 mt-1 inline-flex items-center gap-1"><X className="h-3 w-3" /> {slugStatus.message}</span>}
             </Field>
-            <Field label="Typ (vertical)">
+            <Field label="Typ (vertical)" hint="e-commerce = sklep (WooCommerce/BaseLinker). rental = najem krótkoterminowy (IdoBooking).">
               <div className="flex gap-2">
-                <button type="button" onClick={() => set('vertical', 'ecommerce')} className={`h-9 px-4 rounded-md text-sm font-medium border ${f.vertical === 'ecommerce' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-700'}`}>
+                <button type="button" onClick={() => selectVertical('ecommerce')} className={`h-9 px-4 rounded-md text-sm font-medium border ${f.vertical === 'ecommerce' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-700'}`}>
                   e-commerce
                 </button>
-                <button type="button" disabled className="h-9 px-4 rounded-md text-sm font-medium border border-slate-200 text-slate-300 cursor-not-allowed">
-                  rental (wkrótce)
+                <button type="button" onClick={() => selectVertical('rental')} className={`h-9 px-4 rounded-md text-sm font-medium border ${f.vertical === 'rental' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-700'}`}>
+                  rental
                 </button>
               </div>
             </Field>
@@ -514,8 +539,42 @@ export function ClientWizard() {
           </>
         )}
 
-        {/* ── KROK 3: Integracje ── */}
-        {step === 2 && (
+        {/* ── KROK 3: Integracje (RENTAL) ── */}
+        {step === 2 && f.vertical === 'rental' && (
+          <div className="space-y-6">
+            <p className="text-sm text-slate-500">Dane dostępowe do IdoBooking oraz kontakt ochrony. Możesz uzupełnić później w karcie klienta.</p>
+
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">IdoBooking</h3>
+              <p className="text-xs text-slate-400">Dostęp do API rezerwacji/apartamentów. Hasło jest szyfrowane po stronie backendu.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Scope" hint="Identyfikator konfiguracji, np. „default” lub kod budynku.">
+                  <input className={inputCls} autoComplete="off" value={f.idoScope} onChange={(e) => set('idoScope', e.target.value)} placeholder="default" />
+                </Field>
+                <Field label="Tenant IdoBooking">
+                  <input className={inputCls} autoComplete="off" value={f.idoTenant} onChange={(e) => set('idoTenant', e.target.value)} placeholder="np. silverplace" />
+                </Field>
+                <Field label="Login systemowy">
+                  <input className={inputCls} autoComplete="off" value={f.idoLogin} onChange={(e) => set('idoLogin', e.target.value)} />
+                </Field>
+                <Field label="Hasło API">
+                  <input className={inputCls} type="password" autoComplete="new-password" value={f.idoPassword} onChange={(e) => set('idoPassword', e.target.value)} />
+                </Field>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Kontakt eskalacyjny — ochrona</h3>
+              <p className="text-xs text-slate-400">Telefon do ochrony/interwencji (config.escalation.security_phone). Telefon i e-mail eskalacyjny podałeś w kroku „Brand &amp; bot".</p>
+              <Field label="Telefon ochrony">
+                <input className={inputCls} autoComplete="off" value={f.escalationSecurityPhone} onChange={(e) => set('escalationSecurityPhone', e.target.value)} placeholder="+48 600 000 000" />
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {/* ── KROK 3: Integracje (ECOMMERCE) ── */}
+        {step === 2 && f.vertical !== 'rental' && (
           <div className="space-y-6">
             <p className="text-sm text-slate-500">Wszystkie integracje są opcjonalne — możesz pominąć i uzupełnić później w ustawieniach.</p>
 
@@ -630,7 +689,7 @@ export function ClientWizard() {
           <>
             <Field label="Włączone kanały">
               <div className="flex flex-wrap gap-3">
-                {CHANNELS.map((c) => (
+                {(f.vertical === 'rental' ? RENTAL_CHANNELS : ECOMMERCE_CHANNELS).map((c) => (
                   <label key={c.v} className="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input type="checkbox" checked={f.enabledChannels.includes(c.v)} onChange={() => toggleArr('enabledChannels', c.v)} className="h-4 w-4 rounded border-slate-300" />
                     {c.label}
@@ -685,13 +744,22 @@ export function ClientWizard() {
               <Row k="Eskalacja tel." v={f.escalationPhone || '—'} />
               <Row k="Eskalacja e-mail" v={f.escalationEmail || '—'} />
               <Row k="Kanały" v={f.enabledChannels.join(', ') || '—'} />
-              <Row k="WooCommerce" v={f.wcUrl ? '✓ podane' : '—'} />
-              <Row k="BaseLinker" v={f.baselinkerToken ? '✓ podane' : '—'} />
-              <Row k="Skrzynka" v={f.emailAddress || '—'} />
-              <Row k="Messenger" v={f.messengerPageId ? '✓ podane' : '—'} />
-              <Row k="Płatności" v={f.paymentRecipient || f.paymentAccount ? '✓ podane' : '—'} />
-              <Row k="Klasy VAT" v={f.vatClasses.filter((r) => r.rate.trim() !== '').length ? `${f.vatClasses.filter((r) => r.rate.trim() !== '').length} klas` : '—'} />
-              <Row k="Allegro" v={f.allegroClientId ? '✓ klucze podane' : '—'} />
+              {f.vertical === 'rental' ? (
+                <>
+                  <Row k="IdoBooking" v={f.idoTenant && f.idoLogin ? `✓ ${f.idoScope || 'default'}` : '—'} />
+                  <Row k="Telefon ochrony" v={f.escalationSecurityPhone || '—'} />
+                </>
+              ) : (
+                <>
+                  <Row k="WooCommerce" v={f.wcUrl ? '✓ podane' : '—'} />
+                  <Row k="BaseLinker" v={f.baselinkerToken ? '✓ podane' : '—'} />
+                  <Row k="Skrzynka" v={f.emailAddress || '—'} />
+                  <Row k="Messenger" v={f.messengerPageId ? '✓ podane' : '—'} />
+                  <Row k="Płatności" v={f.paymentRecipient || f.paymentAccount ? '✓ podane' : '—'} />
+                  <Row k="Klasy VAT" v={f.vatClasses.filter((r) => r.rate.trim() !== '').length ? `${f.vatClasses.filter((r) => r.rate.trim() !== '').length} klas` : '—'} />
+                  <Row k="Allegro" v={f.allegroClientId ? '✓ klucze podane' : '—'} />
+                </>
+              )}
               <Row k="Baza wiedzy" v={countFaq(f.faqText) ? `${countFaq(f.faqText)} wpisów` : '—'} />
             </dl>
             {result && !result.ok && (

@@ -174,6 +174,8 @@ const WizardSchema = z.object({
   companyNip: z.string().max(30).optional().default(''),
   escalationPhone: z.string().max(30).optional().default(''),
   escalationEmail: z.string().max(160).optional().default(''),
+  // Rental — kontakt eskalacyjny ochrony (config.escalation.security_phone)
+  escalationSecurityPhone: z.string().max(30).optional().default(''),
   // Krok 3 — integracje (wszystkie opcjonalne)
   wcUrl: z.string().max(300).optional().default(''),
   wcConsumerKey: z.string().max(200).optional().default(''),
@@ -204,6 +206,11 @@ const WizardSchema = z.object({
   // Krok 3 — Allegro (config.integrations.allegro) — creds aplikacji (szyfrowane)
   allegroClientId: z.string().max(200).optional().default(''),
   allegroClientSecret: z.string().max(400).optional().default(''),
+  // Krok 3 — IdoBooking (rental) — dane dostępowe API (hasło szyfrowane po stronie backendu)
+  idoScope: z.string().max(60).optional().default(''),
+  idoTenant: z.string().max(120).optional().default(''),
+  idoLogin: z.string().max(160).optional().default(''),
+  idoPassword: z.string().max(300).optional().default(''),
   // Krok 5 — Wiedza / FAQ (surowy tekst; parsowany server-side)
   faqText: z.string().max(40000).optional().default(''),
   // Krok 4 — kanały
@@ -283,10 +290,7 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
   }
   const d = parsed.data
   const slug = d.slug.toLowerCase()
-
-  if (d.vertical !== 'ecommerce') {
-    return { ok: false, message: 'Na razie obsługujemy tylko vertical ecommerce. Rental — wkrótce.' }
-  }
+  const isRental = d.vertical === 'rental'
 
   // Unikalność slugu — init-tenant robi UPSERT (nadpisałby istniejący config!)
   const existing = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
@@ -306,7 +310,8 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
   }
 
   const integrations: Record<string, unknown> = {}
-  if (clean(d.greeting) || clean(d.botName)) {
+  // Webchat tylko dla ecommerce (rental używa whatsapp/sms/voice/email).
+  if (!isRental && (clean(d.greeting) || clean(d.botName))) {
     integrations.webchat = {
       ...(clean(d.botName) ? { name: clean(d.botName) } : {}),
       ...(clean(d.greeting) ? { greeting: clean(d.greeting) } : {}),
@@ -320,15 +325,23 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
   if (clean(d.shippingCutoff)) shipping.cutoff = clean(d.shippingCutoff)
   if (Object.keys(shipping).length) integrations.shipping = shipping
 
+  // Escalation — dla rental dokładamy security_phone (ochrona). Wysyłamy komplet
+  // w init-tenant (config.escalation z phone/email/security_phone), więc backend
+  // ma pełny obiekt od razu — bez osobnego RMW set-config.
+  const escalation: Record<string, unknown> = {
+    phone: clean(d.escalationPhone) || null,
+    email: clean(d.escalationEmail) || null,
+  }
+  if (isRental && clean(d.escalationSecurityPhone)) {
+    escalation.security_phone = clean(d.escalationSecurityPhone)
+  }
+
   const config: Record<string, unknown> = {
     brand_name: clean(d.name),
     primary_language: d.primaryLanguage,
     languages: d.languages,
     office_hours: clean(d.officeHours) || 'pon-pt 9-17',
-    escalation: {
-      phone: clean(d.escalationPhone) || null,
-      email: clean(d.escalationEmail) || null,
-    },
+    escalation,
   }
   if (clean(d.personaDesc)) config.persona = clean(d.personaDesc)
   if (Object.keys(prompt).length) config.prompt = prompt
@@ -346,7 +359,7 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
     slug,
     name: d.name,
     vertical: d.vertical,
-    enabled_channels: d.enabledChannels.length ? d.enabledChannels : ['webchat'],
+    enabled_channels: d.enabledChannels.length ? d.enabledChannels : (isRental ? ['whatsapp'] : ['webchat']),
     config,
   })
   if (!initRes.ok) {
@@ -354,6 +367,26 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
     return { ok: false, message: 'Nie udało się utworzyć tenanta — przerwano.', steps }
   }
   steps.push({ step: 'Utworzenie tenanta (init-tenant)', ok: true, info: `action=${initRes.data.action ?? '?'}` })
+
+  // ── (a2) IdoBooking (rental) — dane dostępowe API (fail-safe) ──
+  // Poniższe kroki e-commerce (b..d) są guardowane obecnością pól, więc dla
+  // rentala (puste WC/BL/email) naturalnie się pomijają.
+  if (isRental) {
+    const tenant = clean(d.idoTenant)
+    const login = clean(d.idoLogin)
+    if (tenant && login) {
+      const body: Record<string, unknown> = {
+        slug,
+        scope: clean(d.idoScope) || 'default',
+        tenant,
+        system_login: login,
+      }
+      const pass = clean(d.idoPassword)
+      if (pass) body.api_password = pass
+      const r = await callBackend('/api/admin/idobooking-credentials', body)
+      steps.push({ step: 'IdoBooking (dane dostępowe)', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+    }
+  }
 
   // ── (b) set-integration — sekrety + nonsekrety (fail-safe per klucz) ──
   const setIntegration = async (label: string, key: string, value: string | undefined) => {

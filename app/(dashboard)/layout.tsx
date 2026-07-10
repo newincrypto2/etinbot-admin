@@ -13,19 +13,23 @@ export default async function DashboardLayout({
   // DB fallback dla starych JWT bez `role`
   const role = (await getCurrentRole()) ?? 'VIEWER'
 
+  // Aktywny tenant — potrzebny wszystkim (vertical steruje nawigacją w Sidebarze).
+  // activeClient() jest cache() per-request, więc kolejne wywołania w stronach nie kosztują.
+  const active = await activeClient()
+
   // Selektor tenanta: tylko SUPERADMIN bez przypisanego klienta (S1 multi-tenant)
   let tenantSelector: React.ReactNode = null
   const userClientId = (session.user as { clientId?: string | null }).clientId
   if (role === 'SUPERADMIN' && !userClientId) {
-    const [tenants, active] = await Promise.all([
-      prisma.clients.findMany({ select: { slug: true, name: true, vertical: true }, orderBy: { name: 'asc' } }),
-      activeClient(),
-    ])
+    const tenants = await prisma.clients.findMany({
+      select: { slug: true, name: true, vertical: true },
+      orderBy: { name: 'asc' },
+    })
     tenantSelector = <TenantSelector tenants={tenants} active={active.slug} />
   }
 
   return (
-    <DashboardShell user={{ ...session.user, role }} tenantSelector={tenantSelector}>
+    <DashboardShell user={{ ...session.user, role }} tenantSelector={tenantSelector} vertical={active.vertical}>
       {children}
     </DashboardShell>
   )

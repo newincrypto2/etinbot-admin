@@ -20,8 +20,11 @@ import {
   Building2,
   PackagePlus,
   PenLine,
+  BedDouble,
+  CalendarCheck,
 } from 'lucide-react'
 
+// Menu e-commerce (produkcja KH) — NIE ZMIENIAĆ: musi wyglądać dokładnie jak dziś.
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/poczta', label: 'Poczta', icon: Mail },
@@ -38,6 +41,21 @@ const navItems = [
   { href: '/settings/signature', label: 'Moja stopka', icon: PenLine },
 ]
 
+// Menu rental (najem krótkoterminowy) — wspólne pozycje + Apartamenty/Rezerwacje
+// zamiast bloku e-commerce (Produkty…Pasek promo).
+const rentalNavItems = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/poczta', label: 'Poczta', icon: Mail },
+  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle },
+  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
+  { href: '/apartments', label: 'Apartamenty', icon: BedDouble },
+  { href: '/reservations', label: 'Rezerwacje', icon: CalendarCheck },
+  { href: '/faq', label: 'FAQ', icon: HelpCircle },
+  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
+  { href: '/billing', label: 'Koszty', icon: Coins },
+  { href: '/settings/signature', label: 'Moja stopka', icon: PenLine },
+]
+
 const adminItems = [
   { href: '/settings/users', label: 'Użytkownicy', icon: Users },
   { href: '/settings', label: 'Ustawienia', icon: Settings },
@@ -45,12 +63,17 @@ const adminItems = [
 
 type SidebarProps = {
   role: string
+  vertical?: string | null
   open: boolean
   onClose: () => void
 }
 
-export function Sidebar({ role, open, onClose }: SidebarProps) {
+export function Sidebar({ role, vertical, open, onClose }: SidebarProps) {
   const pathname = usePathname()
+
+  // Nawigacja zależna od verticala AKTYWNEGO tenanta. Domyślnie (i dla ecommerce)
+  // menu e-commerce — gwarantuje zero zmian dla KH. Rental dostaje własny zestaw.
+  const items = vertical === 'rental' ? rentalNavItems : navItems
 
   const content = (
     <>
@@ -70,7 +93,7 @@ export function Sidebar({ role, open, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
             <NavLink
