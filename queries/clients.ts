@@ -191,6 +191,7 @@ export type ClientConfigForms = {
   shipping: { free_shipping_threshold: string; cutoff_hour: string }
   webchat: { name: string; greeting: string; color: string }
   allegro: { hasClientId: boolean; hasRefreshToken: boolean }
+  features: { ordering: boolean; order_lookup: boolean }
 }
 
 function str(v: unknown): string {
@@ -198,6 +199,17 @@ function str(v: unknown): string {
   if (typeof v === 'string') return v
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return ''
+}
+
+/** Flaga funkcji bota — brak klucza = domyślnie włączona (true). */
+function boolDefaultTrue(v: unknown): boolean {
+  if (v === undefined || v === null) return true
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'string') {
+    const t = v.trim().toLowerCase()
+    return t !== 'false' && t !== '0' && t !== ''
+  }
+  return Boolean(v)
 }
 
 export async function getClientConfigForms(slug: string): Promise<ClientConfigForms | null> {
@@ -211,6 +223,7 @@ export async function getClientConfigForms(slug: string): Promise<ClientConfigFo
   const shipping = coerceObj(integ.shipping)
   const webchat = coerceObj(integ.webchat)
   const allegro = coerceObj(integ.allegro)
+  const features = coerceObj(cfg.features)
   return {
     escalation: { phone: str(escalation.phone), email: str(escalation.email) },
     payment: {
@@ -231,6 +244,10 @@ export async function getClientConfigForms(slug: string): Promise<ClientConfigFo
     allegro: {
       hasClientId: Boolean(allegro.client_id),
       hasRefreshToken: Boolean(allegro.refresh_token),
+    },
+    features: {
+      ordering: boolDefaultTrue(features.ordering),
+      order_lookup: boolDefaultTrue(features.order_lookup),
     },
   }
 }

@@ -211,6 +211,12 @@ const WizardSchema = z.object({
   idoTenant: z.string().max(120).optional().default(''),
   idoLogin: z.string().max(160).optional().default(''),
   idoPassword: z.string().max(300).optional().default(''),
+  // Krok 3 — źródło produktów (ecommerce): woocommerce (pełna integracja) | feed (XML, bez dostępu do sklepu)
+  productsSource: z.enum(['woocommerce', 'feed']).optional().default('woocommerce'),
+  productsFeedUrl: z.string().max(500).optional().default(''),
+  // Krok 3 — funkcje bota (ecommerce): składanie zamówień / sprawdzanie statusu
+  featureOrdering: z.boolean().optional().default(true),
+  featureOrderLookup: z.boolean().optional().default(true),
   // Krok 5 — Wiedza / FAQ (surowy tekst; parsowany server-side)
   faqText: z.string().max(40000).optional().default(''),
   // Krok 4 — kanały
@@ -447,6 +453,33 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
     }
   }
 
+  // ── (b4b) Źródło produktów + funkcje bota (ecommerce, fail-safe) ──
+  // Backend gate'uje toole/prompt po tych flagach. Dla rentala pomijamy —
+  // te ustawienia dotyczą wyłącznie sklepu e-commerce.
+  if (!isRental) {
+    // Źródło produktów: woocommerce (pełna integracja) | feed (XML, bez dostępu do sklepu)
+    {
+      const r = await callBackend('/api/admin/set-integration', { slug, key: 'products_source', value: d.productsSource })
+      steps.push({ step: `Źródło produktów: ${d.productsSource === 'feed' ? 'feed XML' : 'WooCommerce'}`, ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+      const feedUrl = clean(d.productsFeedUrl)
+      if (d.productsSource === 'feed' && feedUrl) {
+        const r2 = await callBackend('/api/admin/set-integration', { slug, key: 'products_feed_url', value: feedUrl })
+        steps.push({ step: 'URL feedu produktowego', ok: r2.ok, error: r2.ok ? undefined : `HTTP ${r2.status}. ${r2.text.slice(0, 120)}` })
+      }
+    }
+    // Funkcje bota — feed nie daje dostępu do sklepu → wymuszamy oba false
+    {
+      const ordering = d.productsSource === 'feed' ? false : d.featureOrdering
+      const orderLookup = d.productsSource === 'feed' ? false : d.featureOrderLookup
+      const r = await callBackend('/api/admin/set-config', {
+        slug,
+        key: 'features',
+        value_json: JSON.stringify({ ordering, order_lookup: orderLookup }),
+      })
+      steps.push({ step: 'Funkcje bota (składanie/sprawdzanie zamówień)', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+    }
+  }
+
   // ── (b5) Messenger subscribe — po zapisaniu page_id+token (fail-safe) ──
   if (clean(d.messengerPageId) && clean(d.messengerPageToken)) {
     const r = await callBackend('/api/admin/messenger-subscribe', { slug })
@@ -513,10 +546,16 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
     steps.push({ step: `Skrzynka e-mail: ${clean(d.emailAddress)}`, ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
   }
 
-  // ── (d) sync produktów + zamówień (jeśli WC/BL) ──
-  if (clean(d.wcUrl) && clean(d.wcConsumerKey) && clean(d.wcConsumerSecret)) {
+  // ── (d) sync produktów + zamówień ──
+  // Backend sam routuje sync-products po products_source (WC API vs feed XML) —
+  // tu tylko decydujemy, czy jest co synchronizować.
+  const wantProductSync =
+    !isRental &&
+    ((d.productsSource === 'woocommerce' && clean(d.wcUrl) && clean(d.wcConsumerKey) && clean(d.wcConsumerSecret)) ||
+      (d.productsSource === 'feed' && clean(d.productsFeedUrl)))
+  if (wantProductSync) {
     const r = await callBackend('/api/admin/sync-products', { slug })
-    steps.push({ step: 'Sync produktów (WooCommerce)', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}`, info: r.ok ? 'uruchomiony w tle' : undefined })
+    steps.push({ step: `Sync produktów (${d.productsSource === 'feed' ? 'feed XML' : 'WooCommerce'})`, ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}`, info: r.ok ? 'uruchomiony w tle' : undefined })
   }
   if (clean(d.baselinkerToken)) {
     const r = await callBackend('/api/admin/sync-orders', { slug })

@@ -13,6 +13,7 @@ import { RefreshButton } from './_components/RefreshButton'
 import { TestIntegrationButton } from './_components/TestIntegrationButton'
 import { PromptExtraForm } from './_components/PromptExtraForm'
 import { SandboxChat } from './_components/SandboxChat'
+import { VoicePromptCard } from './_components/VoicePromptCard'
 import { ConfigViewer } from './_components/ConfigViewer'
 import { ConfigForms } from './_components/ConfigForms'
 import { AllegroConnect } from './_components/AllegroConnect'
@@ -211,6 +212,7 @@ export default async function ClientCardPage(props: { params: Params; searchPara
           <div className="bg-white rounded-lg border p-5">
             <PromptExtraForm slug={slug} initial={client.promptExtra} />
           </div>
+          <VoicePromptCard slug={slug} initialAgentId={client.elevenlabsAgentId} />
           <SandboxChat slug={slug} />
         </div>
       )}

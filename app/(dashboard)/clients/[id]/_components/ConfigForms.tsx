@@ -10,6 +10,7 @@ import {
   updateCompany,
   updateShipping,
   updateWebchat,
+  updateFeatures,
 } from '@/actions/client-config'
 import type { ClientConfigForms } from '@/queries/clients'
 
@@ -93,6 +94,75 @@ function Section({
   )
 }
 
+function FeaturesSection({
+  slug,
+  initial,
+}: {
+  slug: string
+  initial: { ordering: boolean; order_lookup: boolean }
+}) {
+  const [pending, startTransition] = useTransition()
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const r = await updateFeatures(slug, fd)
+      if (r.ok) toast.success(r.message)
+      else toast.error(r.message)
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-white rounded-lg border p-5 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-800">Funkcje bota</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Zakres działań bota w rozmowie. Wyłączenie ogranicza dostępne narzędzia (config.features).
+        </p>
+      </div>
+      <div className="space-y-3">
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="ordering"
+            defaultChecked={initial.ordering}
+            className="h-4 w-4 mt-0.5 rounded border-slate-300"
+          />
+          <span>
+            <span className="font-medium">Składanie zamówień przez bota</span>
+            <span className="block text-xs text-slate-500">
+              Bot może utworzyć zamówienie w trakcie rozmowy. Wyłączone = tylko doradztwo produktowe.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="order_lookup"
+            defaultChecked={initial.order_lookup}
+            className="h-4 w-4 mt-0.5 rounded border-slate-300"
+          />
+          <span>
+            <span className="font-medium">Sprawdzanie statusu zamówień i przesyłek</span>
+            <span className="block text-xs text-slate-500">
+              Bot sprawdza status zamówienia i śledzenie przesyłki. Wymaga dostępu do sklepu.
+            </span>
+          </span>
+        </label>
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+      >
+        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        Zapisz
+      </button>
+    </form>
+  )
+}
+
 export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfigForms }) {
   // bind slug do każdej akcji
   const bind =
@@ -106,6 +176,8 @@ export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfig
         Edycja kluczowych sekcji configu. Puste pole = usunięcie danej wartości. Pozostałe pola
         sekcji (spoza formularza) są zachowywane przy zapisie.
       </p>
+
+      <FeaturesSection slug={slug} initial={forms.features} />
 
       <Section
         title="Eskalacja"

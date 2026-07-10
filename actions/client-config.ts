@@ -175,6 +175,31 @@ export async function updateWebchat(slug: string, fd: FormData): Promise<ActionR
   )
 }
 
+// ─── Funkcje bota (config.features: ordering / order_lookup) ────────────────
+// RMW: czytamy istniejącą sekcję features i nadpisujemy oba flagi (komplet),
+// zachowując ewentualne inne klucze features dodane w przyszłości.
+
+export async function updateFeatures(slug: string, fd: FormData): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('SUPERADMIN')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const cfg = await readConfig(slug)
+  if (!cfg) return { ok: false, message: `Nie znaleziono klienta ${slug}.` }
+  const section = coerceObj(cfg.features)
+  // checkbox: obecny w FormData ('on') = zaznaczony, brak = odznaczony
+  section.ordering = fd.get('ordering') === 'on'
+  section.order_lookup = fd.get('order_lookup') === 'on'
+
+  const r = await callBackend('/api/admin/set-config', {
+    slug,
+    key: 'features',
+    value_json: JSON.stringify(section),
+  })
+  if (!r.ok) return { ok: false, message: `Nie udało się zapisać (${r.status}). ${r.text.slice(0, 140)}` }
+  revalidatePath(`/clients/${slug}`)
+  return { ok: true, message: 'Zapisano funkcje bota.' }
+}
+
 // ─── Allegro Device Code Flow (endpointy buduje inny agent) ─────────────────
 
 export type AllegroStart =

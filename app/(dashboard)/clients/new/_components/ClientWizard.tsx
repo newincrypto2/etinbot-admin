@@ -61,6 +61,10 @@ type Form = {
   vatClasses: { name: string; rate: string }[]
   allegroClientId: string
   allegroClientSecret: string
+  productsSource: 'woocommerce' | 'feed'
+  productsFeedUrl: string
+  featureOrdering: boolean
+  featureOrderLookup: boolean
   faqText: string
   enabledChannels: string[]
 }
@@ -78,6 +82,7 @@ const EMPTY: Form = {
   paymentRecipient: '', paymentAccount: '', paymentTitlePrefix: '',
   vatClasses: [{ name: '', rate: '23' }],
   allegroClientId: '', allegroClientSecret: '',
+  productsSource: 'woocommerce', productsFeedUrl: '', featureOrdering: true, featureOrderLookup: true,
   faqText: '',
   enabledChannels: ['webchat'],
 }
@@ -210,6 +215,16 @@ export function ClientWizard() {
       if (v === 'ecommerce' && isDefaultRental) channels = ['webchat']
       return { ...prev, vertical: v, enabledChannels: channels }
     })
+
+  // Zmiana źródła produktów — feed nie daje dostępu do sklepu, więc bot nie może
+  // składać ani sprawdzać zamówień: wyłączamy obie funkcje. WooCommerce = defaulty on.
+  const selectProductsSource = (src: 'woocommerce' | 'feed') =>
+    setF((prev) => ({
+      ...prev,
+      productsSource: src,
+      featureOrdering: src === 'feed' ? false : true,
+      featureOrderLookup: src === 'feed' ? false : true,
+    }))
 
   // ── VAT: edytor wierszy klasa→stawka ──
   const setVatRow = (i: number, field: 'name' | 'rate', v: string) =>
@@ -578,15 +593,71 @@ export function ClientWizard() {
           <div className="space-y-6">
             <p className="text-sm text-slate-500">Wszystkie integracje są opcjonalne — możesz pominąć i uzupełnić później w ustawieniach.</p>
 
-            <IntegrationSection title="WooCommerce" test={tests.woocommerce} onTest={() => runTest('woocommerce')} canTest={!!(f.wcUrl && f.wcConsumerKey && f.wcConsumerSecret)}>
-              <Field label="Adres sklepu (URL)"><input className={inputCls} autoComplete="off" value={f.wcUrl} onChange={(e) => setInteg('wcUrl', e.target.value)} placeholder="https://sklep.pl" /></Field>
-              <Field label="Consumer key"><input className={inputCls} autoComplete="off" value={f.wcConsumerKey} onChange={(e) => setInteg('wcConsumerKey', e.target.value)} placeholder="ck_..." /></Field>
-              <Field label="Consumer secret"><input className={inputCls} type="password" autoComplete="new-password" value={f.wcConsumerSecret} onChange={(e) => setInteg('wcConsumerSecret', e.target.value)} placeholder="cs_..." /></Field>
-            </IntegrationSection>
+            {/* Źródło produktów — na górze, decyduje o widoczności WooCommerce/BaseLinker */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Źródło produktów</h3>
+              <p className="text-xs text-slate-400">Skąd bot bierze katalog produktów.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => selectProductsSource('woocommerce')}
+                  className={`text-left p-3 rounded-md border ${f.productsSource === 'woocommerce' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-300 hover:bg-slate-50'}`}
+                >
+                  <span className="font-medium text-sm text-slate-800 block">WooCommerce (pełna integracja)</span>
+                  <span className="text-xs text-slate-500 block mt-0.5">Dostęp do sklepu — produkty, zamówienia, składanie zamówień.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectProductsSource('feed')}
+                  className={`text-left p-3 rounded-md border ${f.productsSource === 'feed' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-300 hover:bg-slate-50'}`}
+                >
+                  <span className="font-medium text-sm text-slate-800 block">Feed produktowy XML (bez dostępu do sklepu)</span>
+                  <span className="text-xs text-slate-500 block mt-0.5">Lekki wariant — sam katalog z pliku XML (np. Google Merchant).</span>
+                </button>
+              </div>
+              {f.productsSource === 'feed' && (
+                <Field label="URL feedu produktowego (XML)" hint="np. Google Merchant / dowolny feed XML z produktami.">
+                  <input className={inputCls} autoComplete="off" value={f.productsFeedUrl} onChange={(e) => set('productsFeedUrl', e.target.value)} placeholder="https://sklep.pl/feed.xml" />
+                </Field>
+              )}
+            </div>
 
-            <IntegrationSection title="BaseLinker" test={tests.baselinker} onTest={() => runTest('baselinker')} canTest={!!f.baselinkerToken}>
-              <Field label="Token API"><input className={inputCls} type="password" autoComplete="new-password" value={f.baselinkerToken} onChange={(e) => setInteg('baselinkerToken', e.target.value)} /></Field>
-            </IntegrationSection>
+            {/* Funkcje bota — składanie / sprawdzanie zamówień */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Funkcje bota</h3>
+              <p className="text-xs text-slate-400">Zakres działań bota w rozmowie z klientem.</p>
+              <label className={`flex items-start gap-2 text-sm ${f.productsSource === 'feed' ? 'opacity-50' : 'text-slate-700'}`}>
+                <input type="checkbox" disabled={f.productsSource === 'feed'} checked={f.featureOrdering} onChange={(e) => set('featureOrdering', e.target.checked)} className="h-4 w-4 mt-0.5 rounded border-slate-300" />
+                <span>
+                  <span className="font-medium">Składanie zamówień przez bota</span>
+                  <span className="block text-xs text-slate-500">Bot może utworzyć zamówienie w trakcie rozmowy. Wyłączone = tylko doradztwo produktowe.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-2 text-sm ${f.productsSource === 'feed' ? 'opacity-50' : 'text-slate-700'}`}>
+                <input type="checkbox" disabled={f.productsSource === 'feed'} checked={f.featureOrderLookup} onChange={(e) => set('featureOrderLookup', e.target.checked)} className="h-4 w-4 mt-0.5 rounded border-slate-300" />
+                <span>
+                  <span className="font-medium">Sprawdzanie statusu zamówień i przesyłek</span>
+                  <span className="block text-xs text-slate-500">Bot sprawdza status zamówienia i śledzenie przesyłki. Wymaga dostępu do sklepu.</span>
+                </span>
+              </label>
+              {f.productsSource === 'feed' && (
+                <p className="text-xs text-amber-600">Feed produktowy nie daje dostępu do sklepu — bot doradza, ale nie składa ani nie sprawdza zamówień.</p>
+              )}
+            </div>
+
+            {f.productsSource === 'woocommerce' && (
+              <>
+                <IntegrationSection title="WooCommerce" test={tests.woocommerce} onTest={() => runTest('woocommerce')} canTest={!!(f.wcUrl && f.wcConsumerKey && f.wcConsumerSecret)}>
+                  <Field label="Adres sklepu (URL)"><input className={inputCls} autoComplete="off" value={f.wcUrl} onChange={(e) => setInteg('wcUrl', e.target.value)} placeholder="https://sklep.pl" /></Field>
+                  <Field label="Consumer key"><input className={inputCls} autoComplete="off" value={f.wcConsumerKey} onChange={(e) => setInteg('wcConsumerKey', e.target.value)} placeholder="ck_..." /></Field>
+                  <Field label="Consumer secret"><input className={inputCls} type="password" autoComplete="new-password" value={f.wcConsumerSecret} onChange={(e) => setInteg('wcConsumerSecret', e.target.value)} placeholder="cs_..." /></Field>
+                </IntegrationSection>
+
+                <IntegrationSection title="BaseLinker" test={tests.baselinker} onTest={() => runTest('baselinker')} canTest={!!f.baselinkerToken}>
+                  <Field label="Token API"><input className={inputCls} type="password" autoComplete="new-password" value={f.baselinkerToken} onChange={(e) => setInteg('baselinkerToken', e.target.value)} /></Field>
+                </IntegrationSection>
+              </>
+            )}
 
             <IntegrationSection title="Skrzynka e-mail" test={tests.email} onTest={() => runTest('email')} canTest={!!f.emailAddress}>
               <Field label="Adres e-mail"><input className={inputCls} autoComplete="off" value={f.emailAddress} onChange={(e) => setInteg('emailAddress', e.target.value)} placeholder="sklep@firma.pl" /></Field>
@@ -751,6 +822,10 @@ export function ClientWizard() {
                 </>
               ) : (
                 <>
+                  <Row k="Źródło produktów" v={f.productsSource === 'feed' ? 'Feed XML' : 'WooCommerce'} />
+                  {f.productsSource === 'feed' && <Row k="URL feedu" v={f.productsFeedUrl ? '✓ podane' : '—'} />}
+                  <Row k="Składanie zamówień" v={f.featureOrdering ? 'Tak' : 'Nie'} />
+                  <Row k="Sprawdzanie zamówień" v={f.featureOrderLookup ? 'Tak' : 'Nie'} />
                   <Row k="WooCommerce" v={f.wcUrl ? '✓ podane' : '—'} />
                   <Row k="BaseLinker" v={f.baselinkerToken ? '✓ podane' : '—'} />
                   <Row k="Skrzynka" v={f.emailAddress || '—'} />
