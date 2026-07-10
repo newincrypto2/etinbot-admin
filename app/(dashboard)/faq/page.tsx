@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, FileText } from 'lucide-react'
 
 import { listFaq, getFaqStats } from '@/queries/faq'
 import { getVertical } from '@/queries/client'
@@ -57,6 +57,15 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
             <div className="text-2xl font-semibold text-slate-900">{stats.active} / {stats.total}</div>
             <div className="text-xs text-slate-500">aktywne / wszystkie</div>
           </div>
+          {canEdit && (
+            <Link
+              href="/faq/dokumenty"
+              className={buttonVariants({ size: 'lg', variant: 'outline' }) + ' gap-1.5'}
+            >
+              <FileText className="h-4 w-4" />
+              Import z dokumentów
+            </Link>
+          )}
           {canEdit && (
             <Link href="/faq/new" className={buttonVariants({ size: 'lg' }) + ' gap-1.5'}>
               <Plus className="h-4 w-4" />

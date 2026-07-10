@@ -429,6 +429,7 @@ export function ClientWizard() {
             <li>Podłącz page token Messengera w Business Managerze klienta i ustaw webhook: <code className="text-xs bg-amber-100 px-1 rounded">{HOST}/webhook/messenger</code></li>
             <li>Utwórz agenta ElevenLabs + narzędzia z prefiksem <code className="text-xs bg-amber-100 px-1 rounded">{result.slug}_*</code> i wpisz agent_id w karcie klienta.</li>
             <li>Autoryzuj Allegro (OAuth device flow) po stronie backendu, jeśli klient sprzedaje na Allegro.</li>
+            <li>Wrzuć dokumenty klienta (regulamin, cennik, FAQ ze strony — PDF/DOCX/TXT) w <strong>FAQ → Import z dokumentów</strong> — system sam zbuduje z nich bazę wiedzy.</li>
           </ul>
         </div>
 
