@@ -18,6 +18,8 @@ import {
   X,
   Megaphone,
   Building2,
+  PackagePlus,
+  PenLine,
 } from 'lucide-react'
 
 const navItems = [
@@ -27,11 +29,13 @@ const navItems = [
   { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
   { href: '/products', label: 'Produkty', icon: Package },
   { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
+  { href: '/reship', label: 'Dosyłki', icon: PackagePlus },
   { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2 },
   { href: '/promo', label: 'Pasek promo', icon: Megaphone },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
+  { href: '/settings/signature', label: 'Moja stopka', icon: PenLine },
 ]
 
 const adminItems = [

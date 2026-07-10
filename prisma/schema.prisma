@@ -96,6 +96,7 @@ model clients {
   orders_cache              orders_cache[]
   order_status_map          order_status_map[]
   reservations_cache        reservations_cache[]
+  reship_requests           reship_requests[]
   rules                     rules[]
 }
 
@@ -326,6 +327,7 @@ model AdminUser {
   role         String   @default("VIEWER")
   isActive     Boolean  @default(true)
   clientId     String?  @db.Uuid
+  emailSignatureHtml String? @map("email_signature_html")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -625,6 +627,27 @@ model promo_bars {
   updated_at          DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([client_id, enabled, priority(sort: Desc)], map: "idx_promo_bars_client_enabled")
+}
+
+// Dosyłki/reklamacje zlecane do magazynu (migration 026). Bot loguje tu każde
+// zlecenie dosyłki: kto, jakie zamówienie, jakie pozycje.
+model reship_requests {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id        String   @db.Uuid
+  conversation_id  String?  @db.Uuid
+  order_number     String?
+  ext_id           String?
+  customer_email   String?
+  customer_phone   String?
+  items_text       String
+  reason           String?
+  status           String   @default("sent_to_warehouse")
+  zulip_message_id BigInt?
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  clients          clients  @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id, created_at(sort: Desc)], map: "idx_reship_client_created")
+  @@index([client_id, customer_email, customer_phone], map: "idx_reship_identity")
 }
 
 enum Role {

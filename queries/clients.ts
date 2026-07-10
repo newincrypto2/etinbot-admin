@@ -180,6 +180,61 @@ export async function getClientBySlug(slug: string): Promise<ClientCard | null> 
   }
 }
 
+// ─── Prefill sekcji formularzy konfiguracji (karta klienta → zakładka Konfiguracja) ─
+// Sekcje bez sekretów — zwracamy wartości wprost (nie maskujemy). Server action
+// re-czyta config i merge'uje, więc tu wystarczą wartości do prefillu inputów.
+
+export type ClientConfigForms = {
+  escalation: { phone: string; email: string }
+  payment: { recipient: string; account: string; title_prefix: string }
+  company: { legal_name: string; address: string; nip: string }
+  shipping: { free_shipping_threshold: string; cutoff_hour: string }
+  webchat: { name: string; greeting: string; color: string }
+  allegro: { hasClientId: boolean; hasRefreshToken: boolean }
+}
+
+function str(v: unknown): string {
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  return ''
+}
+
+export async function getClientConfigForms(slug: string): Promise<ClientConfigForms | null> {
+  const c = await prisma.clients.findUnique({ where: { slug }, select: { config: true } })
+  if (!c) return null
+  const cfg = coerceObj(c.config)
+  const escalation = coerceObj(cfg.escalation)
+  const payment = coerceObj(cfg.payment)
+  const company = coerceObj(cfg.company)
+  const integ = coerceObj(cfg.integrations)
+  const shipping = coerceObj(integ.shipping)
+  const webchat = coerceObj(integ.webchat)
+  const allegro = coerceObj(integ.allegro)
+  return {
+    escalation: { phone: str(escalation.phone), email: str(escalation.email) },
+    payment: {
+      recipient: str(payment.recipient),
+      account: str(payment.account),
+      title_prefix: str(payment.title_prefix),
+    },
+    company: {
+      legal_name: str(company.legal_name),
+      address: str(company.address),
+      nip: str(company.nip),
+    },
+    shipping: {
+      free_shipping_threshold: str(shipping.free_shipping_threshold),
+      cutoff_hour: str(shipping.cutoff_hour),
+    },
+    webchat: { name: str(webchat.name), greeting: str(webchat.greeting), color: str(webchat.color) },
+    allegro: {
+      hasClientId: Boolean(allegro.client_id),
+      hasRefreshToken: Boolean(allegro.refresh_token),
+    },
+  }
+}
+
 export type ClientUserRow = {
   id: string
   email: string

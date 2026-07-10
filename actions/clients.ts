@@ -192,9 +192,74 @@ const WizardSchema = z.object({
   emailSmtpPort: z.string().max(6).optional().default(''),
   freeShippingThreshold: z.string().max(12).optional().default(''),
   shippingCutoff: z.string().max(40).optional().default(''),
+  // Krok 3 — płatności (config.payment, top-level)
+  paymentRecipient: z.string().max(200).optional().default(''),
+  paymentAccount: z.string().max(60).optional().default(''),
+  paymentTitlePrefix: z.string().max(120).optional().default(''),
+  // Krok 3 — VAT (config.integrations.vat_classes) — mapa klasa WC → stawka %
+  vatClasses: z
+    .array(z.object({ name: z.string().max(120), rate: z.string().max(8) }))
+    .optional()
+    .default([]),
+  // Krok 3 — Allegro (config.integrations.allegro) — creds aplikacji (szyfrowane)
+  allegroClientId: z.string().max(200).optional().default(''),
+  allegroClientSecret: z.string().max(400).optional().default(''),
+  // Krok 5 — Wiedza / FAQ (surowy tekst; parsowany server-side)
+  faqText: z.string().max(40000).optional().default(''),
   // Krok 4 — kanały
   enabledChannels: z.array(z.string()).default([]),
 })
+
+// ── Parser bazy wiedzy / FAQ ────────────────────────────────────────────────
+// Akceptuje: pary "pytanie\nodpowiedź" rozdzielone pustą linią; prefiksy
+// Q:/A:, P:/O:, Pytanie:/Odpowiedź:. Elastyczny — działa dla obu stylów.
+type FaqPair = { question: string; answer: string }
+
+function parseFaq(raw: string): FaqPair[] {
+  const text = (raw ?? '').replace(/\r\n?/g, '\n').trim()
+  if (!text) return []
+  const qre = /^\s*(?:q|p|pytanie|question)\s*[:.)]\s*/i
+  const are = /^\s*(?:a|o|odpowied[źz]|answer)\s*[:.)]\s*/i
+  const lines = text.split('\n')
+  const hasMarkers = lines.some((l) => qre.test(l) || are.test(l))
+
+  if (hasMarkers) {
+    type Acc = { q: string[]; a: string[]; mode: 'q' | 'a' }
+    const entries: Acc[] = []
+    let cur: Acc | null = null
+    const flush = () => {
+      if (cur && cur.q.length && cur.a.length) entries.push(cur)
+    }
+    for (const line of lines) {
+      if (qre.test(line)) {
+        flush()
+        cur = { q: [line.replace(qre, '')], a: [], mode: 'q' }
+      } else if (are.test(line)) {
+        if (!cur) cur = { q: [], a: [], mode: 'a' }
+        cur.mode = 'a'
+        cur.a.push(line.replace(are, ''))
+      } else if (cur) {
+        if (cur.mode === 'q') cur.q.push(line)
+        else cur.a.push(line)
+      }
+    }
+    flush()
+    return entries
+      .map((e) => ({ question: e.q.join('\n').trim(), answer: e.a.join('\n').trim() }))
+      .filter((e) => e.question && e.answer)
+  }
+
+  // Bez markerów: bloki rozdzielone pustą linią, 1. linia = pytanie, reszta = odpowiedź
+  return text
+    .split(/\n\s*\n+/)
+    .map((block) => {
+      const bl = block.split('\n')
+      const question = (bl[0] ?? '').trim()
+      const answer = bl.slice(1).join('\n').trim()
+      return { question, answer }
+    })
+    .filter((e) => e.question && e.answer)
+}
 
 export type WizardInput = z.input<typeof WizardSchema>
 
@@ -304,6 +369,99 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
   await setIntegration('Messenger page ID', 'messenger_page_id', clean(d.messengerPageId))
   await setIntegration('Messenger page token', 'messenger_page_token', clean(d.messengerPageToken))
 
+  // ── (b2) Płatności → config.payment (top-level) — tylko gdy coś podano ──
+  {
+    const rec = clean(d.paymentRecipient)
+    const acc = clean(d.paymentAccount)
+    const pre = clean(d.paymentTitlePrefix)
+    if (rec || acc || pre) {
+      const payment: Record<string, unknown> = {}
+      if (rec) payment.recipient = rec
+      if (acc) payment.account = acc
+      if (pre) payment.transfer_title_prefix = pre
+      const r = await callBackend('/api/admin/set-config', { slug, key: 'payment', value_json: JSON.stringify(payment) })
+      steps.push({ step: 'Dane płatności (przelew)', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+    }
+  }
+
+  // ── (b3) VAT → config.integrations.vat_classes (mapa klasa→stawka) ──
+  {
+    const map: Record<string, number> = {}
+    for (const row of d.vatClasses ?? []) {
+      const name = (row.name ?? '').trim()
+      const rateStr = (row.rate ?? '').trim()
+      if (rateStr === '') continue
+      const rate = Number(rateStr.replace(',', '.'))
+      if (Number.isNaN(rate)) continue
+      map[name] = rate // name '' = klasa domyślna
+    }
+    if (Object.keys(map).length) {
+      const r = await callBackend('/api/admin/set-integration', { slug, key: 'vat_classes', value_json: JSON.stringify(map) })
+      steps.push({ step: 'Klasy VAT', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+    }
+  }
+
+  // ── (b4) Allegro → config.integrations.allegro (creds aplikacji, szyfrowane) ──
+  {
+    const cid = clean(d.allegroClientId)
+    const csec = clean(d.allegroClientSecret)
+    if (cid || csec) {
+      const allegro: Record<string, unknown> = {}
+      if (cid) allegro.client_id = cid
+      if (csec) allegro.client_secret = csec
+      const r = await callBackend('/api/admin/set-integration', { slug, key: 'allegro', value_json: JSON.stringify(allegro) })
+      steps.push({ step: 'Allegro (klucze aplikacji)', ok: r.ok, error: r.ok ? undefined : `HTTP ${r.status}. ${r.text.slice(0, 120)}` })
+    }
+  }
+
+  // ── (b5) Messenger subscribe — po zapisaniu page_id+token (fail-safe) ──
+  if (clean(d.messengerPageId) && clean(d.messengerPageToken)) {
+    const r = await callBackend('/api/admin/messenger-subscribe', { slug })
+    const results = Array.isArray(r.data.results) ? (r.data.results as Array<Record<string, unknown>>) : []
+    const allPagesOk = results.length === 0 || results.every((p) => p.ok === true)
+    const ok = r.ok && allPagesOk
+    const failMsg = results.find((p) => p.ok !== true)?.error as string | undefined
+    steps.push({
+      step: 'Messenger: strona zasubskrybowana',
+      ok,
+      error: ok ? undefined : failMsg || `HTTP ${r.status}. ${r.text.slice(0, 120)}`,
+    })
+  }
+
+  // ── (b6) Import bazy wiedzy / FAQ (fail-safe) ──
+  {
+    const faqEntries = parseFaq(d.faqText)
+    if (faqEntries.length) {
+      const r = await callBackend('/api/admin/import-faq', {
+        client_slug: slug,
+        entries: faqEntries.map((e) => ({
+          category: 'ogólne',
+          question: e.question,
+          answer: e.answer,
+          scope: 'both',
+          language: d.primaryLanguage,
+        })),
+      })
+      if (r.ok) {
+        const ins = Number(r.data.inserted ?? 0)
+        const upd = Number(r.data.updated ?? 0)
+        const fail = Number(r.data.failed ?? 0)
+        steps.push({
+          step: `Baza wiedzy: ${ins + upd} wpisów zaimportowanych`,
+          ok: fail === 0,
+          info: fail === 0 && upd > 0 ? `${ins} nowych, ${upd} zaktualizowanych` : undefined,
+          error: fail > 0 ? `${fail} wpisów nie zaimportowano` : undefined,
+        })
+      } else {
+        steps.push({
+          step: `Baza wiedzy: ${faqEntries.length} wpisów`,
+          ok: false,
+          error: `HTTP ${r.status}. ${r.text.slice(0, 120)}`,
+        })
+      }
+    }
+  }
+
   // ── (c) upsert-mailbox ──
   if (clean(d.emailAddress)) {
     const mailbox: Record<string, unknown> = {
@@ -334,4 +492,57 @@ export async function createTenant(raw: WizardInput): Promise<CreateTenantResult
 
   revalidatePath('/clients')
   return { ok: true, slug, steps }
+}
+
+// ─── Allegro OAuth device flow (ekran wynikowy) ─────────────────────────────
+// Endpointy backendu budowane równolegle — mapowanie pól defensywne.
+
+export type AllegroStartResult =
+  | { ok: true; userCode: string; verificationUri: string; deviceCode: string; interval?: number; expiresIn?: number }
+  | { ok: false; message: string }
+
+export async function allegroDeviceStart(slug: string): Promise<AllegroStartResult> {
+  const guard = await assertRoleOrFail('SUPERADMIN')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const r = await callBackend('/api/admin/allegro-device-start', { slug })
+  if (!r.ok) {
+    return { ok: false, message: `Nie udało się rozpocząć autoryzacji (${r.status}). ${(r.data.detail as string) || r.text.slice(0, 160)}` }
+  }
+  const d = r.data
+  const userCode = (d.user_code as string) || ''
+  const verificationUri = (d.verification_uri_complete as string) || (d.verification_uri as string) || ''
+  const deviceCode = (d.device_code as string) || ''
+  if (!userCode || !deviceCode) {
+    return { ok: false, message: 'Backend nie zwrócił user_code / device_code.' }
+  }
+  return {
+    ok: true,
+    userCode,
+    verificationUri,
+    deviceCode,
+    interval: typeof d.interval === 'number' ? d.interval : undefined,
+    expiresIn: typeof d.expires_in === 'number' ? d.expires_in : undefined,
+  }
+}
+
+export type AllegroPollResult = { ok: boolean; status: 'connected' | 'pending' | 'error'; message?: string }
+
+export async function allegroDevicePoll(slug: string, deviceCode: string): Promise<AllegroPollResult> {
+  const guard = await assertRoleOrFail('SUPERADMIN')
+  if (!guard.ok) return { ok: false, status: 'error', message: guard.message }
+  if (!deviceCode) return { ok: false, status: 'error', message: 'Brak device_code — rozpocznij autoryzację ponownie.' }
+  const r = await callBackend('/api/admin/allegro-device-poll', { slug, device_code: deviceCode })
+  const st = (r.data.status as string) || ''
+  const connected = r.data.connected === true || st === 'connected'
+  const pending = st === 'pending' || st === 'authorization_pending' || r.status === 428
+  if (connected) {
+    revalidatePath(`/clients/${slug}`)
+    return { ok: true, status: 'connected' }
+  }
+  if (pending) return { ok: true, status: 'pending' }
+  if (!r.ok) {
+    return { ok: false, status: 'error', message: `Błąd autoryzacji (${r.status}). ${(r.data.detail as string) || r.text.slice(0, 160)}` }
+  }
+  // ok=true, brak jednoznacznego statusu → traktuj jak pending
+  return { ok: true, status: 'pending' }
 }

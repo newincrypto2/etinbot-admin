@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 import { requireRole } from '@/lib/auth-helpers'
-import { getClientBySlug, getTenantHealth, listClientUsers } from '@/queries/clients'
+import { getClientBySlug, getClientConfigForms, getTenantHealth, listClientUsers } from '@/queries/clients'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { ChannelBadges } from '../_components/ChannelBadges'
 import { ClientHeaderActions } from './_components/ClientHeaderActions'
@@ -14,6 +14,8 @@ import { TestIntegrationButton } from './_components/TestIntegrationButton'
 import { PromptExtraForm } from './_components/PromptExtraForm'
 import { SandboxChat } from './_components/SandboxChat'
 import { ConfigViewer } from './_components/ConfigViewer'
+import { ConfigForms } from './_components/ConfigForms'
+import { AllegroConnect } from './_components/AllegroConnect'
 import { SwitchAndSettingsLink } from './_components/SwitchAndSettingsLink'
 
 type Params = Promise<{ id: string }>
@@ -56,6 +58,8 @@ export default async function ClientCardPage(props: { params: Params; searchPara
   const needHealth = tab === 'overview' || tab === 'integrations'
   const healthRes = needHealth ? await getTenantHealth(slug) : null
   const users = tab === 'users' ? await listClientUsers(client.id) : []
+  const configForms =
+    tab === 'config' || tab === 'integrations' ? await getClientConfigForms(slug) : null
 
   return (
     <div className="space-y-6">
@@ -166,6 +170,20 @@ export default async function ClientCardPage(props: { params: Params; searchPara
               })}
             </div>
           )}
+          {configForms?.allegro.hasClientId && (
+            <div className="bg-white border rounded-lg p-4 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Allegro</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Aplikacja skonfigurowana (client_id).{' '}
+                  {configForms.allegro.hasRefreshToken
+                    ? 'Konto jest połączone.'
+                    : 'Połącz konto sprzedawcy (Device Code Flow), aby dokończyć integrację.'}
+                </p>
+              </div>
+              <AllegroConnect slug={slug} connected={configForms.allegro.hasRefreshToken} />
+            </div>
+          )}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
             <p className="text-sm text-slate-600">
               Edycja danych logowania (tokeny, klucze) odbywa się w ustawieniach aktywnego tenanta.
@@ -230,8 +248,11 @@ export default async function ClientCardPage(props: { params: Params; searchPara
 
       {/* ── KONFIGURACJA ── */}
       {tab === 'config' && (
-        <div className="bg-white rounded-lg border p-5">
-          <ConfigViewer json={client.configMaskedJson} />
+        <div className="space-y-5">
+          {configForms && <ConfigForms slug={slug} forms={configForms} />}
+          <div className="bg-white rounded-lg border p-5">
+            <ConfigViewer json={client.configMaskedJson} />
+          </div>
         </div>
       )}
     </div>

@@ -3,12 +3,14 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Loader2, Check, X, Copy, ArrowLeft, ArrowRight, PlugZap, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Check, X, Copy, ArrowLeft, ArrowRight, PlugZap, CheckCircle2, XCircle, Plus, Trash2, ExternalLink } from 'lucide-react'
 
 import {
   checkSlugAvailable,
   testIntegration,
   createTenant,
+  allegroDeviceStart,
+  allegroDevicePoll,
   type WizardInput,
   type IntegrationTestResult,
   type CreateStep,
@@ -48,6 +50,13 @@ type Form = {
   emailSmtpPort: string
   freeShippingThreshold: string
   shippingCutoff: string
+  paymentRecipient: string
+  paymentAccount: string
+  paymentTitlePrefix: string
+  vatClasses: { name: string; rate: string }[]
+  allegroClientId: string
+  allegroClientSecret: string
+  faqText: string
   enabledChannels: string[]
 }
 
@@ -60,7 +69,33 @@ const EMPTY: Form = {
   emailAddress: '', emailProvider: 'imap', emailImapHost: '', emailImapPort: '', emailImapUser: '',
   emailImapPass: '', emailSmtpHost: '', emailSmtpPort: '',
   freeShippingThreshold: '', shippingCutoff: '',
+  paymentRecipient: '', paymentAccount: '', paymentTitlePrefix: '',
+  vatClasses: [{ name: '', rate: '23' }],
+  allegroClientId: '', allegroClientSecret: '',
+  faqText: '',
   enabledChannels: ['webchat'],
+}
+
+// Parser FAQ dla podglądu liczby wpisów (autorytatywny parser jest server-side w createTenant)
+function countFaq(raw: string): number {
+  const text = (raw ?? '').replace(/\r\n?/g, '\n').trim()
+  if (!text) return 0
+  const qre = /^\s*(?:q|p|pytanie|question)\s*[:.)]\s*/i
+  const are = /^\s*(?:a|o|odpowied[źz]|answer)\s*[:.)]\s*/i
+  const lines = text.split('\n')
+  if (lines.some((l) => qre.test(l) || are.test(l))) {
+    let count = 0
+    let hasQ = false
+    let hasA = false
+    const flush = () => { if (hasQ && hasA) count++ }
+    for (const line of lines) {
+      if (qre.test(line)) { flush(); hasQ = true; hasA = false }
+      else if (are.test(line)) { hasA = true }
+    }
+    flush()
+    return count
+  }
+  return text.split(/\n\s*\n+/).filter((b) => b.split('\n').filter((x) => x.trim()).length >= 2).length
 }
 
 const LANGS = [
@@ -79,7 +114,7 @@ const CHANNELS = [
   { v: 'allegro', label: 'Allegro' },
 ]
 
-const STEPS = ['Podstawy', 'Brand & bot', 'Integracje', 'Kanały', 'Podsumowanie']
+const STEPS = ['Podstawy', 'Brand & bot', 'Integracje', 'Kanały', 'Wiedza', 'Podsumowanie']
 
 function slugify(s: string): string {
   const map: Record<string, string> = {
@@ -141,8 +176,48 @@ export function ClientWizard() {
   const [tests, setTests] = useState<Record<string, IntegrationTestResult & { pending?: boolean }>>({})
   const [creating, startCreate] = useTransition()
   const [result, setResult] = useState<{ ok: boolean; slug?: string; steps?: CreateStep[]; message?: string } | null>(null)
+  const [allegro, setAllegro] = useState<{
+    phase: 'idle' | 'starting' | 'awaiting' | 'polling' | 'connected' | 'error'
+    userCode?: string
+    verificationUri?: string
+    deviceCode?: string
+    message?: string
+  }>({ phase: 'idle' })
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((prev) => ({ ...prev, [k]: v }))
+
+  // ── VAT: edytor wierszy klasa→stawka ──
+  const setVatRow = (i: number, field: 'name' | 'rate', v: string) =>
+    setF((prev) => ({ ...prev, vatClasses: prev.vatClasses.map((r, idx) => (idx === i ? { ...r, [field]: v } : r)) }))
+  const addVatRow = () => setF((prev) => ({ ...prev, vatClasses: [...prev.vatClasses, { name: '', rate: '' }] }))
+  const removeVatRow = (i: number) => setF((prev) => ({ ...prev, vatClasses: prev.vatClasses.filter((_, idx) => idx !== i) }))
+
+  // ── Allegro device flow (ekran wynikowy) ──
+  const startAllegro = async () => {
+    if (!result?.slug) return
+    setAllegro({ phase: 'starting' })
+    const r = await allegroDeviceStart(result.slug)
+    if (!r.ok) {
+      setAllegro({ phase: 'error', message: r.message })
+      toast.error(r.message)
+      return
+    }
+    setAllegro({ phase: 'awaiting', userCode: r.userCode, verificationUri: r.verificationUri, deviceCode: r.deviceCode })
+  }
+  const pollAllegro = async () => {
+    if (!result?.slug || !allegro.deviceCode) return
+    setAllegro((a) => ({ ...a, phase: 'polling' }))
+    const r = await allegroDevicePoll(result.slug, allegro.deviceCode)
+    if (r.status === 'connected') {
+      setAllegro((a) => ({ ...a, phase: 'connected' }))
+      toast.success('Allegro połączone.')
+    } else if (r.status === 'pending') {
+      setAllegro((a) => ({ ...a, phase: 'awaiting', message: 'Czekam na autoryzację — zaloguj się na Allegro i kliknij ponownie.' }))
+    } else {
+      setAllegro((a) => ({ ...a, phase: 'awaiting', message: r.message }))
+      toast.error(r.message || 'Błąd sprawdzania połączenia.')
+    }
+  }
 
   // Które pola formularza należą do której sekcji testu integracji.
   // Zmiana dowolnego pola sekcji czyści (stale) wynik testu tej sekcji.
@@ -250,6 +325,61 @@ export function ClientWizard() {
             </div>
           ))}
         </div>
+
+        {f.allegroClientId && f.allegroClientSecret && (
+          <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">Połączenie z Allegro</h2>
+              {allegro.phase === 'connected' && (
+                <span className="text-xs inline-flex items-center gap-1 text-emerald-700 font-medium"><CheckCircle2 className="h-4 w-4" /> Połączono</span>
+              )}
+            </div>
+
+            {allegro.phase === 'idle' && (
+              <>
+                <p className="text-sm text-slate-500">Autoryzuj konto Allegro klienta (device flow). Klient musi być zalogowany na Allegro.</p>
+                <button type="button" onClick={startAllegro} className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
+                  <PlugZap className="h-4 w-4" /> Połącz z Allegro
+                </button>
+              </>
+            )}
+
+            {allegro.phase === 'starting' && (
+              <span className="text-sm text-slate-500 inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Rozpoczynam autoryzację…</span>
+            )}
+
+            {(allegro.phase === 'awaiting' || allegro.phase === 'polling') && (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600">
+                  1. Otwórz stronę autoryzacji i zaloguj się na konto Allegro klienta. Kod: <code className="text-sm bg-slate-100 px-2 py-0.5 rounded font-semibold">{allegro.userCode}</code>
+                </p>
+                {allegro.verificationUri && (
+                  <a href={allegro.verificationUri} target="_blank" rel="noopener noreferrer" className="h-9 px-4 inline-flex items-center gap-2 rounded-md border border-indigo-300 text-indigo-700 text-sm font-medium hover:bg-indigo-50">
+                    <ExternalLink className="h-4 w-4" /> Otwórz stronę autoryzacji Allegro
+                  </a>
+                )}
+                <p className="text-sm text-slate-600">2. Po zalogowaniu wróć tu i sprawdź połączenie.</p>
+                <button type="button" onClick={pollAllegro} disabled={allegro.phase === 'polling'} className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
+                  {allegro.phase === 'polling' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Sprawdź połączenie
+                </button>
+                {allegro.message && <p className="text-xs text-amber-600">{allegro.message}</p>}
+              </div>
+            )}
+
+            {allegro.phase === 'connected' && (
+              <p className="text-sm text-emerald-700 inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Konto Allegro połączone — tokeny zapisane po stronie backendu.</p>
+            )}
+
+            {allegro.phase === 'error' && (
+              <div className="space-y-2">
+                <p className="text-sm text-red-600">{allegro.message}</p>
+                <button type="button" onClick={startAllegro} className="h-9 px-4 inline-flex items-center gap-2 rounded-md border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Spróbuj ponownie
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 space-y-2">
           <h2 className="text-sm font-semibold text-amber-800">Działania ręczne poza platformą</h2>
@@ -432,6 +562,66 @@ export function ClientWizard() {
                 <Field label="Cutoff wysyłki"><input className={inputCls} value={f.shippingCutoff} onChange={(e) => set('shippingCutoff', e.target.value)} placeholder="do 12:00 = dziś" /></Field>
               </div>
             </div>
+
+            {/* Płatności */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Płatności (przelew)</h3>
+              <p className="text-xs text-slate-400">Dane recytowane przez bota i w mailu potwierdzenia zamówienia. Opcjonalne.</p>
+              <Field label="Odbiorca przelewu"><input className={inputCls} autoComplete="off" value={f.paymentRecipient} onChange={(e) => set('paymentRecipient', e.target.value)} placeholder="ETIN GROUP Sp. z o.o." /></Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Numer konta"><input className={inputCls} autoComplete="off" value={f.paymentAccount} onChange={(e) => set('paymentAccount', e.target.value)} placeholder="PL00 0000 0000 0000 0000 0000 0000" /></Field>
+                <Field label="Prefix tytułu przelewu" hint="Np. „Zamówienie nr”."><input className={inputCls} autoComplete="off" value={f.paymentTitlePrefix} onChange={(e) => set('paymentTitlePrefix', e.target.value)} placeholder="Zamówienie nr" /></Field>
+              </div>
+            </div>
+
+            {/* VAT */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Klasy VAT</h3>
+              <p className="text-xs text-slate-400">Mapowanie klasy podatkowej WooCommerce na stawkę %. Pierwszy wiersz (pusta nazwa) = stawka domyślna.</p>
+              <div className="space-y-2">
+                {f.vatClasses.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      className={`${inputCls} flex-1`}
+                      value={row.name}
+                      onChange={(e) => setVatRow(i, 'name', e.target.value)}
+                      placeholder={i === 0 ? 'domyślna (pusta nazwa)' : 'np. reduced-rate'}
+                    />
+                    <span className="text-slate-400 text-sm">→</span>
+                    <input
+                      className={`${inputCls} w-24`}
+                      value={row.rate}
+                      onChange={(e) => setVatRow(i, 'rate', e.target.value)}
+                      placeholder="23"
+                    />
+                    <span className="text-slate-400 text-sm">%</span>
+                    <button
+                      type="button"
+                      onClick={() => removeVatRow(i)}
+                      className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-400 hover:bg-slate-50 hover:text-red-500"
+                      title="Usuń wiersz"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addVatRow} className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                <Plus className="h-3.5 w-3.5" /> Dodaj klasę
+              </button>
+            </div>
+
+            {/* Allegro */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700">Allegro</h3>
+              <p className="text-xs text-slate-400">
+                Client ID i Client Secret aplikacji Allegro. Klient zakłada aplikację na{' '}
+                <a href="https://apps.developer.allegro.pl" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-0.5">apps.developer.allegro.pl <ExternalLink className="h-3 w-3" /></a>{' '}
+                (typ: aplikacja z dostępem przez przeglądarkę / device flow). Autoryzacja konta następuje po utworzeniu klienta.
+              </p>
+              <Field label="Client ID"><input className={inputCls} autoComplete="off" value={f.allegroClientId} onChange={(e) => setInteg('allegroClientId', e.target.value)} placeholder="np. a1b2c3..." /></Field>
+              <Field label="Client Secret"><input className={inputCls} type="password" autoComplete="new-password" value={f.allegroClientSecret} onChange={(e) => setInteg('allegroClientSecret', e.target.value)} /></Field>
+            </div>
           </div>
         )}
 
@@ -460,8 +650,28 @@ export function ClientWizard() {
           </>
         )}
 
-        {/* ── KROK 5: Podsumowanie ── */}
+        {/* ── KROK 5: Wiedza / FAQ ── */}
         {step === 4 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700">Baza wiedzy / FAQ</h3>
+            <p className="text-sm text-slate-500">
+              Wklej pytania i odpowiedzi. Rozdzielaj pary pustą linią. Możesz użyć prefiksów <code className="text-xs bg-slate-100 px-1 rounded">P:</code>/<code className="text-xs bg-slate-100 px-1 rounded">O:</code> lub <code className="text-xs bg-slate-100 px-1 rounded">Q:</code>/<code className="text-xs bg-slate-100 px-1 rounded">A:</code>, albo po prostu pytanie w pierwszej linii i odpowiedź poniżej.
+            </p>
+            <textarea
+              className={`${inputCls} h-auto py-2 font-mono text-xs`}
+              rows={12}
+              value={f.faqText}
+              onChange={(e) => set('faqText', e.target.value)}
+              placeholder={'P: Jaki jest czas dostawy?\nO: Zwykle 1-2 dni robocze kurierem InPost.\n\nP: Czy wysyłacie za granicę?\nO: Tak, do krajów UE.'}
+            />
+            <p className="text-xs text-slate-400">
+              Wykryto wpisów: <span className="font-semibold text-slate-600">{countFaq(f.faqText)}</span>. Zostaną zaimportowane z embeddingami po utworzeniu klienta.
+            </p>
+          </div>
+        )}
+
+        {/* ── KROK 6: Podsumowanie ── */}
+        {step === 5 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700">Podsumowanie</h3>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -479,6 +689,10 @@ export function ClientWizard() {
               <Row k="BaseLinker" v={f.baselinkerToken ? '✓ podane' : '—'} />
               <Row k="Skrzynka" v={f.emailAddress || '—'} />
               <Row k="Messenger" v={f.messengerPageId ? '✓ podane' : '—'} />
+              <Row k="Płatności" v={f.paymentRecipient || f.paymentAccount ? '✓ podane' : '—'} />
+              <Row k="Klasy VAT" v={f.vatClasses.filter((r) => r.rate.trim() !== '').length ? `${f.vatClasses.filter((r) => r.rate.trim() !== '').length} klas` : '—'} />
+              <Row k="Allegro" v={f.allegroClientId ? '✓ klucze podane' : '—'} />
+              <Row k="Baza wiedzy" v={countFaq(f.faqText) ? `${countFaq(f.faqText)} wpisów` : '—'} />
             </dl>
             {result && !result.ok && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700">

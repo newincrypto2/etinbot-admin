@@ -19,6 +19,12 @@ async function currentUserName(): Promise<string | undefined> {
   return undefined
 }
 
+/** Email zalogowanego użytkownika — backend dokleja jego stopkę do wysyłki. */
+async function currentUserEmail(): Promise<string | undefined> {
+  const session = await auth()
+  return session?.user?.email ?? undefined
+}
+
 export type EmailActionResult = { ok: boolean; message: string; draftId?: string; redirect?: boolean }
 
 const FREEMAIL = new Set([
@@ -101,7 +107,13 @@ export async function sendDraft(
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const signer = await currentUserName()
-  const r = await callBackend('/api/email/send', { draft_id: draftId, body_text: bodyText, signer_name: signer })
+  const actorEmail = await currentUserEmail()
+  const r = await callBackend('/api/email/send', {
+    draft_id: draftId,
+    body_text: bodyText,
+    signer_name: signer,
+    actor_email: actorEmail,
+  })
   if (!r.ok) {
     return { ok: false, message: `Wysyłka nie powiodła się (${r.status}). ${r.text.slice(0, 160)}` }
   }
@@ -124,10 +136,12 @@ export async function wrapQuickReply(
   if (!coreText.trim()) return { ok: false, message: 'Wpisz rdzeń odpowiedzi.' }
 
   const signer = await currentUserName()
+  const actorEmail = await currentUserEmail()
   const r = await callBackend('/api/email/wrap', {
     conversation_id: conversationId,
     core_text: coreText,
     signer_name: signer,
+    actor_email: actorEmail,
   })
   if (!r.ok) {
     return { ok: false, message: `Nie udało się wygenerować draftu (${r.status}). ${r.text.slice(0, 160)}` }
