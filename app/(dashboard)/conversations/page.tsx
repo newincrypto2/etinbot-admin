@@ -24,6 +24,10 @@ const CHANNEL_COLOR: Record<string, string> = {
   email: 'bg-slate-100 text-slate-700',
   voice: 'bg-violet-100 text-violet-700',
   idobooking: 'bg-amber-100 text-amber-700',
+  webchat: 'bg-cyan-100 text-cyan-700',
+  messenger: 'bg-sky-100 text-sky-700',
+  allegro: 'bg-orange-100 text-orange-700',
+  allegro_issue: 'bg-rose-100 text-rose-700',
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -53,7 +57,7 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Konwersacje</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Rozmowy bota z gośćmi. Każdy wiersz to thread (WhatsApp / SMS / email / voice / IdoBooking).
+            Rozmowy bota z klientami. Każdy wiersz to wątek (webchat / Messenger / SMS / email / telefon / Allegro).
           </p>
         </div>
       </header>
@@ -86,11 +90,9 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
           <label className="text-xs font-medium text-slate-600 block mb-1">Kanał</label>
           <select name="channel" defaultValue={channel} className="h-9 px-3 rounded-md border border-slate-300 text-sm">
             <option value="all">wszystkie</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="sms">SMS</option>
-            <option value="email">Email</option>
-            <option value="voice">Telefon</option>
-            <option value="idobooking">IdoBooking</option>
+            {Object.entries(CHANNEL_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </div>
         <button type="submit" className="h-9 px-4 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
