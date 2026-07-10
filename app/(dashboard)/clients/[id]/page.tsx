@@ -19,6 +19,7 @@ import { ConfigForms } from './_components/ConfigForms'
 import { AllegroConnect } from './_components/AllegroConnect'
 import { SwitchAndSettingsLink } from './_components/SwitchAndSettingsLink'
 import { IdoBookingCreds } from './_components/IdoBookingCreds'
+import { DangerZone } from './_components/DangerZone'
 import { listIdoBookingCredentials } from '@/actions/idobooking'
 
 type Params = Promise<{ id: string }>
@@ -267,6 +268,7 @@ export default async function ClientCardPage(props: { params: Params; searchPara
           <div className="bg-white rounded-lg border p-5">
             <ConfigViewer json={client.configMaskedJson} />
           </div>
+          <DangerZone slug={client.slug} active={client.active} />
         </div>
       )}
     </div>
