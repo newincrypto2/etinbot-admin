@@ -113,6 +113,7 @@ export type MessageRow = {
   tokensIn: number | null
   tokensOut: number | null
   bookingFiltered: boolean | null
+  author: string | null
   createdAt: Date
 }
 
@@ -148,6 +149,7 @@ export type ConversationDetail = {
   lastMessageAt: Date
   createdAt: Date
   closedAt: Date | null
+  takenOverBy: string | null
   messages: MessageRow[]
   escalationCount: number
 }
@@ -174,6 +176,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
       last_message_at: true,
       created_at: true,
       closed_at: true,
+      taken_over_by: true,
       _count: { select: { escalations: true } },
       messages: {
         orderBy: { created_at: 'asc' },
@@ -187,6 +190,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
           tokens_in: true,
           tokens_out: true,
           booking_filtered: true,
+          author: true,
           created_at: true,
         },
       },
@@ -297,6 +301,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
     lastMessageAt: conv.last_message_at,
     createdAt: conv.created_at,
     closedAt: conv.closed_at,
+    takenOverBy: conv.taken_over_by,
     escalationCount: conv._count.escalations,
     messages: conv.messages.map((m) => ({
       id: m.id,
@@ -308,6 +313,7 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
       tokensIn: m.tokens_in,
       tokensOut: m.tokens_out,
       bookingFiltered: m.booking_filtered,
+      author: m.author,
       createdAt: m.created_at,
     })),
   }

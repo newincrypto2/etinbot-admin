@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { fmtDateShort, fmtDateTimeSec } from '@/lib/datetime'
 import { ConversationActions } from './_components/ConversationActions'
 import { ConversationCosts } from './_components/ConversationCosts'
+import { TakeoverPanel } from './_components/TakeoverPanel'
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', voice: 'Telefon', idobooking: 'IdoBooking',
@@ -141,6 +142,11 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
         )}
       </div>
 
+      {/* Przejęcie rozmowy przez człowieka */}
+      {conv.status !== 'closed' && (
+        <TakeoverPanel id={conv.id} channel={conv.channel} status={conv.status} takenOverBy={conv.takenOverBy} />
+      )}
+
       {/* Wiadomości */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700">
@@ -154,7 +160,10 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
         ) : (
           <div className="space-y-2">
             {conv.messages.map((m) => {
-              const rolemeta = ROLE_LABEL[m.role] ?? ROLE_LABEL.system
+              // Wiadomość człowieka z panelu (takeover) — odróżnij od bota
+              const rolemeta = m.author
+                ? { label: `Obsługa · ${m.author}`, color: 'bg-emerald-50 border-emerald-200 text-emerald-900' }
+                : ROLE_LABEL[m.role] ?? ROLE_LABEL.system
               // Prisma driver adapter zwraca jsonb jako STRING — bez parse tool calls
               // nigdy się nie renderowały (silent fail)
               const rawTc = typeof m.toolCalls === 'string'
