@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getApartmentById } from '@/queries/apartments'
 import { updateApartment } from '@/actions/apartments'
 import { ApartmentForm } from '../../_components/ApartmentForm'
+import { getBuildings } from '@/queries/buildings'
 
 export default async function EditApartmentPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
@@ -27,6 +28,7 @@ export default async function EditApartmentPage(props: { params: Promise<{ id: s
 
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <ApartmentForm
+          buildings={await getBuildings()}
           action={updateAction}
           initial={{
             name: apt.name,

@@ -23,7 +23,7 @@ Zasady:
 - Tłumacz na język docelowy zachowując ton.
 - answer_voice: maksymalnie 2 zdania, naturalna mowa.
 - ZACHOWAJ konkretne dane 1:1: kwoty (30 zł zostaje "30 zł" / "30 PLN"),
-  godziny, numery telefonów, kody, nazwy własne ("Silver Place", "Silver Forest").
+  godziny, numery telefonów, kody, nazwy własne (nazwy budynków, marek).
 - NIE używaj nawiasów ani list w answer_voice.
 - NIE dodawaj komentarzy poza JSON.`
 

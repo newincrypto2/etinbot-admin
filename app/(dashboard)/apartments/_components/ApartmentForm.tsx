@@ -8,17 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionResult, ApartmentInput } from '@/actions/apartments'
+import type { BuildingOption } from '@/lib/building-format'
 
 type Props = {
   action: (state: ActionResult, fd: FormData) => Promise<ActionResult>
   initial?: Partial<ApartmentInput>
   submitLabel?: string
+  buildings?: BuildingOption[]
 }
-
-const BUILDINGS = [
-  { value: 'silver-place', label: 'Silver Place' },
-  { value: 'silver-forest', label: 'Silver Forest' },
-]
 
 const ACCESS_METHODS = [
   { value: '', label: '— wybierz —' },
@@ -37,7 +34,7 @@ const SMARTLOCKS = [
   { value: 'other', label: 'Inne' },
 ]
 
-export function ApartmentForm({ action, initial = {}, submitLabel = 'Zapisz' }: Props) {
+export function ApartmentForm({ action, initial = {}, submitLabel = 'Zapisz', buildings = [] }: Props) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
 
   return (
@@ -51,17 +48,21 @@ export function ApartmentForm({ action, initial = {}, submitLabel = 'Zapisz' }: 
       <Section title="Podstawowe">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Nazwa apartamentu" error={state.errors?.name}>
-            <Input name="name" defaultValue={initial.name ?? ''} required placeholder="np. SF A12" />
+            <Input name="name" defaultValue={initial.name ?? ''} required placeholder="np. A12" />
           </Field>
-          <Field label="Budynek" error={state.errors?.buildingCode}>
-            <select name="buildingCode" defaultValue={initial.buildingCode ?? 'silver-place'} required
-              className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white">
-              {BUILDINGS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </select>
+          <Field label="Budynek (kod)" error={state.errors?.buildingCode}>
+            <Input name="buildingCode" defaultValue={initial.buildingCode ?? buildings[0]?.code ?? ''}
+              required list="building-codes" placeholder="np. budynek-a (małe litery i myślniki)" />
+            <datalist id="building-codes">
+              {buildings.map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}
+            </datalist>
+            <p className="text-xs text-slate-500 mt-1">
+              Wybierz istniejący budynek albo wpisz nowy kod — budynki powstają właśnie tutaj.
+            </p>
           </Field>
 
           <Field label="Adres">
-            <Input name="address" defaultValue={initial.address ?? ''} placeholder="ul. Niemierzyńska 1" />
+            <Input name="address" defaultValue={initial.address ?? ''} placeholder="ul. Przykładowa 1" />
           </Field>
           <Field label="Klatka / wejście">
             <Input name="entranceCode" defaultValue={initial.entranceCode ?? ''} placeholder="np. klatka 4" />
@@ -102,10 +103,10 @@ export function ApartmentForm({ action, initial = {}, submitLabel = 'Zapisz' }: 
       <Section title="WiFi">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="SSID">
-            <Input name="wifiSsid" defaultValue={initial.wifiSsid ?? ''} placeholder="np. SilverPlace" />
+            <Input name="wifiSsid" defaultValue={initial.wifiSsid ?? ''} placeholder="np. NazwaSieci" />
           </Field>
           <Field label="Hasło">
-            <Input name="wifiPassword" defaultValue={initial.wifiPassword ?? ''} placeholder="np. silverplace-2022" />
+            <Input name="wifiPassword" defaultValue={initial.wifiPassword ?? ''} placeholder="np. haslo-wifi" />
           </Field>
         </div>
       </Section>

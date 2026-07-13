@@ -16,18 +16,8 @@ import { EcommerceIntegrationsForm } from './_components/EcommerceIntegrationsFo
 import { activeClientSlug } from '@/lib/tenant'
 
 
-const SCOPE_META: Record<string, { label: string; description: string; color: string }> = {
-  'silver-place': {
-    label: 'Silver Place',
-    description: 'ul. Niemierzyńska 1, Szczecin',
-    color: 'bg-blue-50 border-blue-200',
-  },
-  'silver-forest': {
-    label: 'Silver Forest',
-    description: 'Szczecin (przy lesie)',
-    color: 'bg-emerald-50 border-emerald-200',
-  },
-}
+import { buildingLabel } from '@/lib/building-format'
+import { getBuildings } from '@/queries/buildings'
 
 export default async function IntegrationsSettingsPage() {
   await requireRole('OWNER')
@@ -97,17 +87,20 @@ export default async function IntegrationsSettingsPage() {
     )
   }
 
-  // ─── Rental (Silver Place wzorzec) — IdoBooking per budynek ───
-  const [settings, creds] = await Promise.all([
+  // ─── Rental — IdoBooking per budynek (budynki tenanta z DB, bez hardkodu) ───
+  const [settings, creds, buildings] = await Promise.all([
     getClientSettings((await activeClientSlug())),
     listIdobookingCreds((await activeClientSlug())),
+    getBuildings(),
   ])
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 
-  const credsByScope: Record<string, IdoBookingCreds | undefined> = {
-    'silver-place': creds.find((c) => c.scope === 'silver-place'),
-    'silver-forest': creds.find((c) => c.scope === 'silver-forest'),
-  }
+  // Karty per budynek: budynki z apartamentów + scope'y z już zapisanych creds
+  // (np. creds dodane zanim powstały apartamenty).
+  const scopes = Array.from(new Set([...buildings.map((b) => b.code), ...creds.map((c) => c.scope)]))
+  const credsByScope: Record<string, IdoBookingCreds | undefined> = Object.fromEntries(
+    scopes.map((sc) => [sc, creds.find((c) => c.scope === sc)]),
+  )
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -123,23 +116,30 @@ export default async function IntegrationsSettingsPage() {
         </p>
       </header>
 
+      {scopes.length === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+          Brak budynków — dodaj najpierw apartamenty (zakładka Apartamenty), a tu pojawią się karty
+          IdoBooking per budynek.
+        </div>
+      )}
+
       <div className="space-y-4">
-        {(['silver-place', 'silver-forest'] as const).map((scope) => {
-          const meta = SCOPE_META[scope]
+        {scopes.map((scope) => {
+          
           const cred = credsByScope[scope]
           return (
-            <div key={scope} className={`rounded-lg border-2 ${meta.color} p-5`}>
+            <div key={scope} className="rounded-lg border-2 border-slate-200 bg-white p-5">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-semibold text-slate-900">{meta.label}</h2>
+                    <h2 className="font-semibold text-slate-900">{buildingLabel(scope)}</h2>
                     {cred?.isActive ? (
                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     ) : cred ? (
                       <AlertTriangle className="h-4 w-4 text-amber-500" />
                     ) : null}
                   </div>
-                  <p className="text-xs text-slate-500">{meta.description}</p>
+                  <p className="text-xs text-slate-500 font-mono">{scope}</p>
                 </div>
                 {cred && (
                   <div className="text-right text-xs text-slate-500">

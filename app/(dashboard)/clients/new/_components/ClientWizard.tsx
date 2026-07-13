@@ -568,7 +568,7 @@ export function ClientWizard() {
                   <input className={inputCls} autoComplete="off" value={f.idoScope} onChange={(e) => set('idoScope', e.target.value)} placeholder="default" />
                 </Field>
                 <Field label="Tenant IdoBooking">
-                  <input className={inputCls} autoComplete="off" value={f.idoTenant} onChange={(e) => set('idoTenant', e.target.value)} placeholder="np. silverplace" />
+                  <input className={inputCls} autoComplete="off" value={f.idoTenant} onChange={(e) => set('idoTenant', e.target.value)} placeholder="np. nazwa-obiektu" />
                 </Field>
                 <Field label="Login systemowy">
                   <input className={inputCls} autoComplete="off" value={f.idoLogin} onChange={(e) => set('idoLogin', e.target.value)} />

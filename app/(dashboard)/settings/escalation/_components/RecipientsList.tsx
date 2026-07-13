@@ -9,12 +9,15 @@ import type { ActionResult } from '@/actions/client'
 import type { EscalationRecipient } from '@/queries/notifications'
 
 import { RecipientForm } from './RecipientForm'
+import { buildingLabel } from '@/lib/building-format'
 import { DeleteRecipientButton } from './DeleteRecipientButton'
 
 type Props = {
   recipients: EscalationRecipient[]
   upsertAction: (state: ActionResult, fd: FormData) => Promise<ActionResult>
   deleteAction: (state: ActionResult, fd: FormData) => Promise<ActionResult>
+  vertical?: 'rental' | 'ecommerce'
+  buildings?: import('@/lib/building-format').BuildingOption[]
 }
 
 const ROLE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -24,18 +27,13 @@ const ROLE_META: Record<string, { label: string; icon: React.ReactNode; color: s
   owner: { label: 'Właściciel', icon: <Crown className="h-3 w-3" />, color: 'bg-amber-50 text-amber-700 border-amber-200' },
 }
 
-const SCOPE_LABEL: Record<string, string> = {
-  'silver-place': 'Silver Place',
-  'silver-forest': 'Silver Forest',
-}
-
 const SEVERITY_LABEL: Record<string, string> = {
   all: 'wszystkie',
   urgent_only: 'tylko pilne',
   normal_only: 'tylko zwykłe',
 }
 
-export function RecipientsList({ recipients, upsertAction, deleteAction }: Props) {
+export function RecipientsList({ recipients, upsertAction, deleteAction, vertical = 'rental', buildings = [] }: Props) {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
 
@@ -61,7 +59,7 @@ export function RecipientsList({ recipients, upsertAction, deleteAction }: Props
                   <h3 className="text-sm font-medium">Edytuj odbiorcę</h3>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Anuluj</Button>
                 </div>
-                <RecipientForm action={upsertAction} initial={r} onDone={() => setEditing(null)} />
+                <RecipientForm vertical={vertical} buildings={buildings} action={upsertAction} initial={r} onDone={() => setEditing(null)} />
               </>
             ) : (
               <div className="flex items-start justify-between gap-3">
@@ -83,11 +81,15 @@ export function RecipientsList({ recipients, upsertAction, deleteAction }: Props
                     <code className="font-mono">{r.phone}</code>
                   </div>
                   <div className="mt-1 text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      {r.scope ? SCOPE_LABEL[r.scope] ?? r.scope : 'wszystkie budynki'}
-                    </span>
-                    <span>·</span>
+                    {vertical !== 'ecommerce' && (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {r.scope ? buildingLabel(r.scope) : 'wszystkie budynki'}
+                        </span>
+                        <span>·</span>
+                      </>
+                    )}
                     <span>powiadomienia: {SEVERITY_LABEL[r.severityFilter] ?? r.severityFilter}</span>
                     {r.note && (
                       <>
@@ -115,7 +117,7 @@ export function RecipientsList({ recipients, upsertAction, deleteAction }: Props
             <h3 className="text-sm font-medium">Nowy odbiorca SMS</h3>
             <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Anuluj</Button>
           </div>
-          <RecipientForm action={upsertAction} onDone={() => setShowAdd(false)} />
+          <RecipientForm vertical={vertical} buildings={buildings} action={upsertAction} onDone={() => setShowAdd(false)} />
         </div>
       ) : (
         <Button variant="outline" onClick={() => setShowAdd(true)} className="w-full">

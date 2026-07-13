@@ -15,10 +15,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   webchat: 'Webchat', messenger: 'Messenger', allegro: 'Allegro (wiadomości)', allegro_issue: 'Allegro (reklamacje)',
 }
 
-const BUILDING_LABEL: Record<string, string> = {
-  'silver-place': 'Silver Place',
-  'silver-forest': 'Silver Forest',
-}
+import { buildingLabel } from '@/lib/building-format'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   open: { label: 'Otwarta', color: 'bg-emerald-100 text-emerald-700' },
@@ -84,6 +81,7 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
                     : `#${conv.order.extId}`
                   : null
               }
+              href={conv.order?.adminUrl ?? undefined}
               icon={<ShoppingCart className="h-3.5 w-3.5" />}
               mono
             />
@@ -107,7 +105,7 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
               <Meta
                 label="Tracking"
                 value={conv.order.trackingNumber}
-                href={conv.order.trackingUrl ?? undefined}
+                href={conv.order.trackingHref ?? conv.order.trackingUrl ?? undefined}
                 icon={<Truck className="h-3.5 w-3.5" />}
                 mono
               />
@@ -123,7 +121,7 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
               value={
                 conv.apartmentName
                   ? conv.apartmentBuilding
-                    ? `${conv.apartmentName} · ${BUILDING_LABEL[conv.apartmentBuilding] ?? conv.apartmentBuilding}`
+                    ? `${conv.apartmentName} · ${buildingLabel(conv.apartmentBuilding)}`
                     : conv.apartmentName
                   : conv.apartmentId?.slice(0, 8) ?? null
               }
@@ -143,7 +141,9 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
       </div>
 
       {/* Przejęcie rozmowy przez człowieka */}
-      {conv.status !== 'closed' && (
+      {/* Przejęcie działa na kanałach dispatch (bot milknie); voice idzie
+          przez ElevenLabs, email/Allegro mają flow draftów. */}
+      {conv.status !== 'closed' && ['webchat', 'messenger', 'sms', 'whatsapp'].includes(conv.channel) && (
         <TakeoverPanel id={conv.id} channel={conv.channel} status={conv.status} takenOverBy={conv.takenOverBy} />
       )}
 

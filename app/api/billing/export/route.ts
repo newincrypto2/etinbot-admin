@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(lines.join('\n') + '\n', {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="silver-bot-koszty-${month.iso}-summary.csv"`,
+        'Content-Disposition': `attachment; filename="etinbot-koszty-${month.iso}-summary.csv"`,
       },
     })
   }
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(lines.join('\n') + '\n', {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="silver-bot-koszty-${month.iso}-detail.csv"`,
+      'Content-Disposition': `attachment; filename="etinbot-koszty-${month.iso}-detail.csv"`,
     },
   })
 }

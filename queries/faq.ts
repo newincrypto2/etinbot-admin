@@ -17,7 +17,7 @@ export type FaqRow = {
 
 export async function listFaq(opts: {
   clientSlug?: string
-  scope?: string         // 'all' | 'both' | 'silver-place' | 'silver-forest'
+  scope?: string         // 'all' | 'both' | kod budynku tenanta
   category?: string      // 'all' | concrete
   search?: string
 }): Promise<FaqRow[]> {

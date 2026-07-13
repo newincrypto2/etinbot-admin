@@ -9,15 +9,7 @@ import { SyncButton } from './_components/SyncButton'
 import { activeClientSlug } from '@/lib/tenant'
 
 
-const BUILDING_LABEL: Record<string, string> = {
-  'silver-place': 'Silver Place',
-  'silver-forest': 'Silver Forest',
-}
-
-const BUILDING_COLOR: Record<string, string> = {
-  'silver-place': 'bg-blue-100 text-blue-700 border-blue-200',
-  'silver-forest': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-}
+import { buildingLabel, buildingColor } from '@/lib/building-format'
 
 type SearchParams = Promise<{
   building?: string
@@ -67,7 +59,7 @@ export default async function ApartmentsPage(props: { searchParams: SearchParams
           <select name="building" defaultValue={building} className="h-9 px-3 rounded-md border border-slate-300 text-sm">
             <option value="all">wszystkie</option>
             {buildings.map((b) => (
-              <option key={b.code} value={b.code}>{BUILDING_LABEL[b.code] ?? b.code} ({b.count})</option>
+              <option key={b.code} value={b.code}>{buildingLabel(b.code)} ({b.count})</option>
             ))}
           </select>
         </div>
@@ -112,8 +104,8 @@ export default async function ApartmentsPage(props: { searchParams: SearchParams
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${BUILDING_COLOR[r.buildingCode] ?? 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                      {BUILDING_LABEL[r.buildingCode] ?? r.buildingCode}
+                    <span className={`text-xs px-2 py-0.5 rounded border border-slate-200 ${buildingColor(r.buildingCode)}`}>
+                      {buildingLabel(r.buildingCode)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs space-y-1">

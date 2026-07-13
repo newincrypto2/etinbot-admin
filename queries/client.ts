@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export type Vertical = 'rental' | 'ecommerce'
 
-/** Vertical klienta — steruje całym UI panelu (rental = Silver Place wzorzec, ecommerce = KH).
+/** Vertical klienta — steruje całym UI panelu (rental = apartamenty/rezerwacje, ecommerce = sklep).
  *  Cache'owane per-request, bo czyta to wiele server-componentów w jednym renderze. */
 export const getVertical = cache(async (slug: string): Promise<Vertical> => {
   const c = await prisma.clients.findUnique({ where: { slug }, select: { vertical: true } })
@@ -78,7 +78,7 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
 
 export type IdoBookingCreds = {
   id: string
-  scope: string             // 'silver-place' | 'silver-forest'
+  scope: string             // kod budynku tenanta (kebab-case)
   tenant: string
   systemLogin: string
   hasPassword: boolean      // tylko flag — nie zwracamy hasła

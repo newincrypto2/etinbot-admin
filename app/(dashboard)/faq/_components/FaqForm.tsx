@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionResult, FaqInput } from '@/actions/faq'
+import type { BuildingOption } from '@/lib/building-format'
 
 type Props = {
   action: (state: ActionResult, fd: FormData) => Promise<ActionResult>
@@ -15,15 +16,10 @@ type Props = {
   categories: string[]
   submitLabel?: string
   vertical?: 'rental' | 'ecommerce'
+  buildings?: BuildingOption[]
 }
 
-const SCOPES = [
-  { value: 'both', label: 'Oba budynki' },
-  { value: 'silver-place', label: 'Silver Place' },
-  { value: 'silver-forest', label: 'Silver Forest' },
-]
-
-export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapisz', vertical = 'rental' }: Props) {
+export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapisz', vertical = 'rental', buildings = [] }: Props) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
 
   return (
@@ -74,7 +70,8 @@ export function FaqForm({ action, initial = {}, categories, submitLabel = 'Zapis
               defaultValue={initial.scope ?? 'both'}
               className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white"
             >
-              {SCOPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              <option value="both">Wszystkie budynki</option>
+              {buildings.map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}
             </select>
           </Field>
         )}

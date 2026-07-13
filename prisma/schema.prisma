@@ -486,6 +486,9 @@ model orders_cache {
   tracking_url     String?
   delivery_method  String?
   payment_method   String?
+  // Źródło wiersza (backend migracja 039): 'baselinker' (default; stare wiersze NULL=BL)
+  // | 'woocommerce' (sync przez WC REST) — decyduje dokąd linkuje panel (lib/order-links.ts)
+  source           String?  @default("baselinker")
   items            Json?
   date_add         DateTime? @db.Timestamptz(6)
   date_confirmed   DateTime? @db.Timestamptz(6)

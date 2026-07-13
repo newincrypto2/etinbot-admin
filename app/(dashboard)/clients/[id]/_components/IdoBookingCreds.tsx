@@ -143,7 +143,7 @@ export function IdoBookingCreds({
               className={inputCls}
               value={form.tenant}
               onChange={(e) => setForm((f) => ({ ...f, tenant: e.target.value }))}
-              placeholder="np. silverplace"
+              placeholder="np. nazwa-obiektu"
               autoComplete="off"
             />
           </label>

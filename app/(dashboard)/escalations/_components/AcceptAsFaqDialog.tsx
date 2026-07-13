@@ -11,23 +11,22 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { acceptEscalationAsFaq, type ActionResult } from '@/actions/escalations'
-
-const SCOPES = [
-  { value: 'both', label: 'Oba budynki' },
-  { value: 'silver-place', label: 'Silver Place' },
-  { value: 'silver-forest', label: 'Silver Forest' },
-]
+import type { BuildingOption } from '@/lib/building-format'
 
 export function AcceptAsFaqDialog({
   open,
   onOpenChange,
   escalationId,
   suggestedQuestion,
+  vertical = 'rental',
+  buildings = [],
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   escalationId: string
   suggestedQuestion: string
+  vertical?: 'rental' | 'ecommerce'
+  buildings?: BuildingOption[]
 }) {
   const router = useRouter()
   const action = acceptEscalationAsFaq.bind(null, escalationId)
@@ -67,7 +66,7 @@ export function AcceptAsFaqDialog({
           <div>
             <Label className="text-xs font-medium block mb-1">Pytanie (po polsku)</Label>
             <Input name="question" defaultValue={suggestedQuestion} required maxLength={500}
-              placeholder="np. Czy mogę przyjechać z psem?" />
+              placeholder={vertical === 'ecommerce' ? 'np. Ile trwa dostawa?' : 'np. Czy mogę przyjechać z psem?'} />
             <p className="text-xs text-slate-500 mt-1">Wstępna treść z wiadomości gościa — popraw jeśli trzeba.</p>
             {state.errors?.question && <p className="text-xs text-red-600 mt-1">{state.errors.question}</p>}
           </div>
@@ -82,16 +81,21 @@ export function AcceptAsFaqDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-medium block mb-1">Kategoria</Label>
-              <Input name="category" required maxLength={50} placeholder="np. zwierzęta" />
+              <Input name="category" required maxLength={50} placeholder={vertical === 'ecommerce' ? 'np. dostawa, zwroty' : 'np. zwierzęta'} />
               {state.errors?.category && <p className="text-xs text-red-600 mt-1">{state.errors.category}</p>}
             </div>
-            <div>
-              <Label className="text-xs font-medium block mb-1">Budynek (scope)</Label>
-              <select name="scope" defaultValue="both"
-                className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white">
-                {SCOPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
+            {vertical === 'ecommerce' ? (
+              <input type="hidden" name="scope" value="both" />
+            ) : (
+              <div>
+                <Label className="text-xs font-medium block mb-1">Budynek (scope)</Label>
+                <select name="scope" defaultValue="both"
+                  className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm bg-white">
+                  <option value="both">Wszystkie budynki</option>
+                  {buildings.map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

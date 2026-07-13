@@ -25,10 +25,14 @@ export function EscalationCard({
   escalation,
   reasonLabel,
   canEdit = true,
+  vertical = 'rental',
+  buildings = [],
 }: {
   escalation: EscalationListRow
   reasonLabel: string
   canEdit?: boolean
+  vertical?: 'rental' | 'ecommerce'
+  buildings?: import('@/lib/building-format').BuildingOption[]
 }) {
   const router = useRouter()
   const [resolveOpen, setResolveOpen] = useState(false)
@@ -174,6 +178,8 @@ export function EscalationCard({
         onOpenChange={setAcceptOpen}
         escalationId={escalation.id}
         suggestedQuestion={escalation.lastUserMessage ?? ''}
+        vertical={vertical}
+        buildings={buildings}
       />
     </div>
   )

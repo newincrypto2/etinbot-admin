@@ -7,6 +7,7 @@ import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import type { ActionResult } from '@/actions/client'
 import { activeClientSlug } from '@/lib/tenant'
+import { isValidScope } from '@/queries/buildings'
 
 
 const PhoneSchema = z
@@ -21,7 +22,8 @@ const RecipientSchema = z.object({
   name: z.string().trim().min(1, 'Nazwa wymagana').max(80),
   phone: PhoneSchema,
   role: z.enum(['office', 'security', 'manager', 'owner']),
-  scope: z.enum(['all', 'silver-place', 'silver-forest']).default('all'),
+  // 'all' albo kod budynku tenanta — membership walidowany w upsert.
+  scope: z.string().regex(/^[a-z0-9-]{1,50}$/, 'Niepoprawny scope').default('all'),
   severityFilter: z.enum(['all', 'urgent_only', 'normal_only']).default('all'),
   smsEnabled: z.boolean().default(true),
   isActive: z.boolean().default(true),
@@ -68,6 +70,9 @@ export async function upsertEscalationRecipient(
   const data = parsed.data
   const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) return { ok: false, message: 'Klient nie znaleziony' }
+  if (!(await isValidScope(data.scope, ['all'], client.id))) {
+    return { ok: false, message: `Nieznany budynek (scope): ${data.scope}` }
+  }
 
   const phoneNormalized = _normalizePhone(data.phone)
   const scopeOrNull = data.scope === 'all' ? null : data.scope

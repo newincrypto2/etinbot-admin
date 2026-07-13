@@ -19,6 +19,7 @@ export default async function EditFaqPage(props: { params: Promise<{ id: string 
     getVertical((await activeClientSlug())),
   ])
   if (!faq) notFound()
+  const buildings = vertical === 'rental' ? await (await import('@/queries/buildings')).getBuildings() : []
 
   // Bind id do server action
   const updateAction = updateFaq.bind(null, id)
@@ -55,6 +56,7 @@ export default async function EditFaqPage(props: { params: Promise<{ id: string 
           categories={categories}
           submitLabel="Zapisz zmiany"
           vertical={vertical}
+          buildings={buildings}
         />
       </div>
 

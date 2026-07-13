@@ -74,7 +74,7 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
       <form className="flex flex-wrap gap-2 items-end p-4 rounded-lg border border-slate-200 bg-white">
         <div className="flex-1 min-w-[200px]">
           <label className="text-xs font-medium text-slate-600 block mb-1">Szukaj</label>
-          <input type="text" name="q" defaultValue={search} placeholder="telefon, email, imię, ID rezerwacji"
+          <input type="text" name="q" defaultValue={search} placeholder="telefon, email, imię, nr zamówienia/rezerwacji"
             className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm" />
         </div>
         <div>

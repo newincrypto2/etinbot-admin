@@ -9,13 +9,13 @@ import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 import { callBackend } from '@/lib/backend'
 
-const BUILDINGS = ['silver-place', 'silver-forest'] as const
 const ACCESS_METHODS = ['smartlock', 'lockbox', 'reception', 'static_code'] as const
 const SMARTLOCK_PROVIDERS = ['', 'ttlock', 'nuki', 'yale', 'igloohome', 'other'] as const
 
 const ApartmentInputSchema = z.object({
   name: z.string().min(1, 'Nazwa wymagana').max(100),
-  buildingCode: z.enum(BUILDINGS),
+  // Kod budynku = wolny kebab-case per tenant (tu POWSTAJĄ nowe budynki).
+  buildingCode: z.string().trim().min(1).max(50).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Kod: małe litery, cyfry i myślniki'),
   address: z.string().max(200).optional().nullable(),
   floor: z.coerce.number().int().min(-2).max(20).optional().nullable(),
   entranceCode: z.string().max(50).optional().nullable(),

@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 import { createApartment } from '@/actions/apartments'
+import { getBuildings } from '@/queries/buildings'
 import { ApartmentForm } from '../_components/ApartmentForm'
 
-export default function NewApartmentPage() {
+export default async function NewApartmentPage() {
+  const buildings = await getBuildings()
   return (
     <div className="max-w-3xl space-y-6">
       <Link href="/apartments" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
@@ -20,7 +22,7 @@ export default function NewApartmentPage() {
       </header>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <ApartmentForm action={createApartment} submitLabel="Utwórz" />
+        <ApartmentForm action={createApartment} submitLabel="Utwórz" buildings={buildings} />
       </div>
     </div>
   )

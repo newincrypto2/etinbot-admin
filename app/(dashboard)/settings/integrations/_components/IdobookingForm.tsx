@@ -10,7 +10,7 @@ import type { ActionResult } from '@/actions/client'
 
 type Props = {
   action: (state: ActionResult, fd: FormData) => Promise<ActionResult>
-  scope: 'silver-place' | 'silver-forest'
+  scope: string  // kod budynku tenanta (bez hardkodu brandów)
   initial: {
     tenant: string
     systemLogin: string

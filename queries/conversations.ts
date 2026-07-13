@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { orderAdminUrl, normalizeOrderSource, wcUrlForClient } from '@/lib/order-links'
+import { courierTrackingUrl } from '@/lib/tracking'
 
 export type ConversationListRow = {
   id: string
@@ -127,6 +129,10 @@ export type ConversationOrder = {
   dateAdd: Date | null
   /** ile zamówień ma ten klient (po emailu/telefonie) — żeby pokazać "+N więcej" */
   totalCount: number
+  /** link do zamówienia w systemie źródłowym (BaseLinker / wp-admin WC) — lib/order-links */
+  adminUrl: string | null
+  /** link śledzenia przesyłki: tracking_url z DB > mapa kurierów (lib/tracking) */
+  trackingHref: string | null
 }
 
 export type ConversationDetail = {
@@ -221,6 +227,8 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
           currency: true,
           tracking_number: true,
           tracking_url: true,
+          delivery_method: true,
+          source: true,
           date_add: true,
         },
       }),
@@ -236,6 +244,11 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
         })
         statusName = sm?.status_name ?? null
       }
+      // Link do systemu źródłowego: wcUrl dociągamy TYLKO gdy source=woocommerce
+      const wcUrl =
+        normalizeOrderSource(latest.source) === 'woocommerce'
+          ? await wcUrlForClient(conv.client_id)
+          : null
       order = {
         extId: latest.ext_id,
         status: statusName,
@@ -245,6 +258,10 @@ export async function getConversation(id: string): Promise<ConversationDetail | 
         trackingUrl: latest.tracking_url,
         dateAdd: latest.date_add,
         totalCount: count,
+        adminUrl: orderAdminUrl({ source: latest.source, extId: latest.ext_id, wcUrl }),
+        trackingHref: latest.tracking_number
+          ? latest.tracking_url ?? courierTrackingUrl(latest.delivery_method, latest.tracking_number)
+          : null,
       }
     }
   }

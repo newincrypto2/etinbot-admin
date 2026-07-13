@@ -9,16 +9,16 @@ import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq, type TargetLang } from '@/lib/translator'
 import { activeClientSlug } from '@/lib/tenant'
+import { isValidScope } from '@/queries/buildings'
 
 // ---- Schema walidacji ----
-
-const SCOPES = ['both', 'silver-place', 'silver-forest'] as const
 
 const FaqInputSchema = z.object({
   question: z.string().min(3, 'Pytanie min. 3 znaki').max(500),
   answer: z.string().min(3, 'Odpowiedź min. 3 znaki').max(5000),
   category: z.string().min(1, 'Kategoria wymagana').max(50),
-  scope: z.enum(SCOPES).default('both'),
+  // Membership scope walidowany w akcjach przez isValidScope (per tenant).
+  scope: z.string().regex(/^[a-z0-9-]{1,50}$/, 'Niepoprawny scope').default('both'),
   isActive: z.boolean().default(true),
 })
 
@@ -149,6 +149,9 @@ export async function createFaq(_prev: ActionResult, fd: FormData): Promise<Acti
     return { ok: false, message: 'Błędy walidacji', errors }
   }
   const data = parsed.data
+  if (!(await isValidScope(data.scope, ['both']))) {
+    return { ok: false, message: `Nieznany budynek (scope): ${data.scope}` }
+  }
   const clientSlug = await activeClientSlug()
   const clientId = await getClientId(clientSlug)
 
@@ -203,6 +206,9 @@ export async function updateFaq(id: string, _prev: ActionResult, fd: FormData): 
     return { ok: false, message: 'Błędy walidacji', errors }
   }
   const data = parsed.data
+  if (!(await isValidScope(data.scope, ['both']))) {
+    return { ok: false, message: `Nieznany budynek (scope): ${data.scope}` }
+  }
 
   const existing = await prisma.faq.findUnique({
     where: { id },

@@ -39,7 +39,7 @@ const EcommerceIntegrationsSchema = z.object({
 })
 
 const IdoBookingCredsSchema = z.object({
-  scope: z.enum(['silver-place', 'silver-forest']),
+  scope: z.string().trim().min(1).max(50).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Kod: małe litery, cyfry i myślniki'),
   tenant: z.string().min(1).max(50),
   systemLogin: z.string().min(1).max(100),
   apiPassword: z.string().max(200).optional(),  // empty = no change
@@ -277,7 +277,7 @@ export async function upsertIdobookingCreds(_prev: ActionResult, fd: FormData): 
   return { ok: true, message: `Zapisano ${data.scope}` }
 }
 
-export async function deleteIdobookingCreds(scope: 'silver-place' | 'silver-forest'): Promise<ActionResult> {
+export async function deleteIdobookingCreds(scope: string): Promise<ActionResult> {
   const guard = await assertRoleOrFail('OWNER')
   if (!guard.ok) return { ok: false, message: guard.message }
 

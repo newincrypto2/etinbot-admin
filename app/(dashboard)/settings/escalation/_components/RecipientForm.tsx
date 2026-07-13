@@ -14,6 +14,8 @@ type Props = {
   action: (state: ActionResult, fd: FormData) => Promise<ActionResult>
   initial?: EscalationRecipient
   onDone?: () => void
+  vertical?: 'rental' | 'ecommerce'
+  buildings?: import('@/lib/building-format').BuildingOption[]
 }
 
 const ROLE_OPTIONS = [
@@ -23,19 +25,13 @@ const ROLE_OPTIONS = [
   { value: 'owner', label: 'Właściciel' },
 ]
 
-const SCOPE_OPTIONS = [
-  { value: 'all', label: 'Wszystkie budynki' },
-  { value: 'silver-place', label: 'Silver Place' },
-  { value: 'silver-forest', label: 'Silver Forest' },
-]
-
 const SEVERITY_OPTIONS = [
   { value: 'all', label: 'Wszystkie (pilne + zwykłe)' },
   { value: 'urgent_only', label: 'Tylko pilne (awarie 24/7)' },
   { value: 'normal_only', label: 'Tylko zwykłe (modyfikacje, info)' },
 ]
 
-export function RecipientForm({ action, initial, onDone }: Props) {
+export function RecipientForm({ action, initial, onDone, vertical = 'rental', buildings = [] }: Props) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
 
   const isOk = state.ok && state.message
@@ -75,12 +71,17 @@ export function RecipientForm({ action, initial, onDone }: Props) {
             {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-        <div>
-          <Label className="text-xs font-medium block mb-1">Budynek</Label>
-          <select name="scope" defaultValue={initial?.scope ?? 'all'} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-            {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
+        {vertical === 'ecommerce' ? (
+          <input type="hidden" name="scope" value="all" />
+        ) : (
+          <div>
+            <Label className="text-xs font-medium block mb-1">Budynek</Label>
+            <select name="scope" defaultValue={initial?.scope ?? 'all'} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+              <option value="all">Wszystkie budynki</option>
+              {buildings.map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <Label className="text-xs font-medium block mb-1">Filtr ważności</Label>
           <select name="severityFilter" defaultValue={initial?.severityFilter ?? 'all'} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">

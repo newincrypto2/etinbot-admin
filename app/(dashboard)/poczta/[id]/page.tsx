@@ -225,20 +225,27 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
               <ul className="space-y-3">
                 {orders.map((o) => {
                   // Realny URL śledzenia bierzemy z żywego statusu przesyłki (BaseLinker
-                  // getOrderPackages), bo orders_cache.tracking_url bywa puste. Fallback: cache.
-                  const trackUrl = shipMap.get(o.extId)?.trackingUrl ?? o.trackingUrl ?? null
+                  // getOrderPackages), bo orders_cache.tracking_url bywa puste.
+                  // Fallback: cache (o.trackingHref = tracking_url z DB > mapa kurierów).
+                  const trackUrl = shipMap.get(o.extId)?.trackingUrl ?? o.trackingHref ?? null
                   return (
                   <li key={o.extId} className="text-sm border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between">
-                      <a
-                        href={`https://panel.baselinker.com/orders.php#order:${o.extId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-indigo-600 hover:underline"
-                        title="Otwórz w BaseLinker"
-                      >
-                        #{o.shopOrderId ?? o.extId}
-                      </a>
+                      {/* Link do zamówienia w systemie źródłowym (BaseLinker / wp-admin WC);
+                          nieznane źródło → numer bez linku */}
+                      {o.adminUrl ? (
+                        <a
+                          href={o.adminUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-indigo-600 hover:underline"
+                          title="Otwórz zamówienie w systemie sklepu"
+                        >
+                          #{o.shopOrderId ?? o.extId}
+                        </a>
+                      ) : (
+                        <span className="font-medium text-slate-700">#{o.shopOrderId ?? o.extId}</span>
+                      )}
                       {o.total != null && (
                         <span className="text-slate-700">{o.total.toFixed(2)} {o.currency ?? 'PLN'}</span>
                       )}

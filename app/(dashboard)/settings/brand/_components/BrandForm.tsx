@@ -32,7 +32,7 @@ export function BrandForm({ action, initial }: {
         <Label className="text-sm font-medium block mb-1.5">Imię bota</Label>
         <Input name="botName" defaultValue={initial.botName} required maxLength={50} />
         <p className="text-xs text-slate-500 mt-1">
-          Tak bot się przedstawi: „Cześć, jestem [imię], asystent Silver Place".
+          Tak bot się przedstawi: „Cześć, jestem [imię], asystent [nazwa obiektu/sklepu]".
         </p>
       </div>
 

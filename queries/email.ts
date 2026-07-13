@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
+import { orderAdminUrl, normalizeOrderSource, wcUrlForClient } from '@/lib/order-links'
+import { courierTrackingUrl } from '@/lib/tracking'
 
 async function clientIdFromSlug(slug?: string): Promise<string> {
   // FAIL-CLOSED: brak/nieznany slug NIE może zdjąć filtra tenanta — wcześniej
@@ -160,6 +162,10 @@ export type CustomerOrder = {
   paymentMethod: string | null
   dateAdd: Date | null
   itemCount: number | null
+  /** link do zamówienia w systemie źródłowym (BaseLinker / wp-admin WC) — lib/order-links */
+  adminUrl: string | null
+  /** link śledzenia przesyłki: tracking_url z DB > mapa kurierów (lib/tracking) */
+  trackingHref: string | null
 }
 
 export type ShipmentStatus = {
@@ -345,10 +351,14 @@ export async function getCustomerOrders(clientId: string, email: string | null):
       tracking_url: true,
       delivery_method: true,
       payment_method: true,
+      source: true,
       date_add: true,
       items: true,
     },
   })
+  // wcUrl dociągamy RAZ i tylko gdy któryś wiersz jest z WooCommerce
+  const needsWc = rows.some((r) => normalizeOrderSource(r.source) === 'woocommerce')
+  const wcUrl = needsWc ? await wcUrlForClient(clientId) : null
   return rows.map((r) => ({
     extId: r.ext_id,
     shopOrderId: r.shop_order_id,
@@ -361,6 +371,10 @@ export async function getCustomerOrders(clientId: string, email: string | null):
     paymentMethod: r.payment_method,
     dateAdd: r.date_add,
     itemCount: coerceArr(r.items).length || null, // jsonb bywa stringiem (driver adapter)
+    adminUrl: orderAdminUrl({ source: r.source, extId: r.ext_id, wcUrl }),
+    trackingHref: r.tracking_number
+      ? r.tracking_url ?? courierTrackingUrl(r.delivery_method, r.tracking_number)
+      : null,
   }))
 }
 

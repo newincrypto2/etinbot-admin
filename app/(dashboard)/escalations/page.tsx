@@ -5,6 +5,8 @@ import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { EscalationCard } from './_components/EscalationCard'
 import { ResolveAllButton } from './_components/ResolveAllButton'
 import { activeClientSlug } from '@/lib/tenant'
+import { getVertical } from '@/queries/client'
+import { getBuildings } from '@/queries/buildings'
 
 
 const REASON_LABEL: Record<string, string> = {
@@ -29,11 +31,13 @@ export default async function EscalationsPage(props: { searchParams: SearchParam
   const status = params.status ?? 'unresolved'
   const reason = params.reason ?? 'all'
 
-  const [rows, stats, role] = await Promise.all([
+  const [rows, stats, role, vertical] = await Promise.all([
     listEscalations({ clientSlug: (await activeClientSlug()), status, reason }),
     getEscalationStats((await activeClientSlug())),
     getCurrentRole(),
+    getVertical((await activeClientSlug())),
   ])
+  const buildings = vertical === 'rental' ? await getBuildings() : []
   const canEdit = hasRole(role, 'EDITOR')
 
   return (
@@ -112,6 +116,8 @@ export default async function EscalationsPage(props: { searchParams: SearchParam
               escalation={esc}
               reasonLabel={REASON_LABEL[esc.reason] ?? esc.reason}
               canEdit={canEdit}
+              vertical={vertical}
+              buildings={buildings}
             />
           ))
         )}

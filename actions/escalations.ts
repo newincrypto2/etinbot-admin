@@ -9,6 +9,7 @@ import { assertRoleOrFail } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq } from '@/lib/translator'
 import { activeClientSlug } from '@/lib/tenant'
+import { isValidScope } from '@/queries/buildings'
 
 export type ActionResult = { ok: boolean; message?: string; errors?: Record<string, string> }
 
@@ -20,7 +21,9 @@ const AcceptAsFaqSchema = z.object({
   question: z.string().min(3).max(500),
   answer: z.string().min(3).max(5000),
   category: z.string().min(1).max(50),
-  scope: z.enum(['both', 'silver-place', 'silver-forest']).default('both'),
+  // Scope elastyczny per tenant ('both' albo kod budynku) — membership
+  // walidowany niżej przez isValidScope (bez hardkodu Silver Place/Forest).
+  scope: z.string().regex(/^[a-z0-9-]{1,50}$/, 'Niepoprawny scope').default('both'),
 })
 
 async function getResolverEmail(): Promise<string> {
@@ -93,6 +96,10 @@ export async function acceptEscalationAsFaq(
     select: { client_id: true, resolved_at: true },
   })
   if (!esc) return { ok: false, message: 'Eskalacja nie istnieje' }
+
+  if (!(await isValidScope(parsed.data.scope, ['both'], esc.client_id))) {
+    return { ok: false, message: `Nieznany budynek (scope): ${parsed.data.scope}` }
+  }
 
   // 1. Utwórz master FAQ PL
   const data = parsed.data

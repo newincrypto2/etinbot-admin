@@ -9,15 +9,19 @@ import { upsertEscalationRecipient, deleteEscalationRecipient } from '@/actions/
 import { EscalationForm } from './_components/EscalationForm'
 import { RecipientsList } from './_components/RecipientsList'
 import { activeClientSlug } from '@/lib/tenant'
+import { getVertical } from '@/queries/client'
+import { getBuildings } from '@/queries/buildings'
 
 
 export default async function EscalationSettingsPage() {
   await requireRole('OWNER')
-  const [settings, recipients] = await Promise.all([
+  const [settings, recipients, vertical] = await Promise.all([
     getClientSettings((await activeClientSlug())),
     listEscalationRecipients((await activeClientSlug())),
+    getVertical((await activeClientSlug())),
   ])
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
+  const buildings = vertical === 'rental' ? await getBuildings() : []
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -40,7 +44,8 @@ export default async function EscalationSettingsPage() {
           <div>
             <h2 className="font-semibold text-slate-900">Odbiorcy SMS przy eskalacji</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Bot wyśle SMS do każdego aktywnego odbiorcy pasującego do filtra (budynek + ważność).
+              Bot wyśle SMS do każdego aktywnego odbiorcy pasującego do filtra
+              ({vertical === 'ecommerce' ? 'ważność' : 'budynek + ważność'}).
               SMS zawiera podsumowanie sprawy + link do konwersacji w panelu.
             </p>
           </div>
@@ -49,6 +54,8 @@ export default async function EscalationSettingsPage() {
           recipients={recipients}
           upsertAction={upsertEscalationRecipient}
           deleteAction={deleteEscalationRecipient}
+          vertical={vertical}
+          buildings={buildings}
         />
       </section>
 

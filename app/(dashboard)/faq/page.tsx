@@ -10,17 +10,8 @@ import { FaqRowActions } from './_components/FaqRowActions'
 import { activeClientSlug } from '@/lib/tenant'
 
 
-const SCOPE_LABEL: Record<string, string> = {
-  both: 'oba',
-  'silver-place': 'Silver Place',
-  'silver-forest': 'Silver Forest',
-}
-
-const SCOPE_COLOR: Record<string, string> = {
-  both: 'bg-slate-100 text-slate-700',
-  'silver-place': 'bg-blue-100 text-blue-700',
-  'silver-forest': 'bg-emerald-100 text-emerald-700',
-}
+import { buildingLabel, buildingColor } from '@/lib/building-format'
+import { getBuildings } from '@/queries/buildings'
 
 type SearchParams = Promise<{
   scope?: string
@@ -42,6 +33,7 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
   ])
   const canEdit = hasRole(role, 'EDITOR')
   const isEcom = vertical === 'ecommerce'
+  const buildings = isEcom ? [] : await getBuildings()
 
   return (
     <div className="space-y-6">
@@ -78,7 +70,7 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
       {/* Statystyki — scope (tylko rental) + kategoria */}
       <div className={isEcom ? '' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
         {!isEcom && (
-          <StatGroup title="Per budynek" items={stats.byScope.map((s) => ({ label: SCOPE_LABEL[s.scope] ?? s.scope, count: s.count }))} />
+          <StatGroup title="Per budynek" items={stats.byScope.map((s) => ({ label: buildingLabel(s.scope), count: s.count }))} />
         )}
         <StatGroup title="Per kategoria" items={stats.byCategory.slice(0, 6).map((c) => ({ label: c.category, count: c.count }))} />
       </div>
@@ -100,9 +92,8 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
             <label className="text-xs font-medium text-slate-600 block mb-1">Budynek</label>
             <select name="scope" defaultValue={scope} className="h-9 px-3 rounded-md border border-slate-300 text-sm">
               <option value="all">wszystkie</option>
-              <option value="both">oba</option>
-              <option value="silver-place">Silver Place</option>
-              <option value="silver-forest">Silver Forest</option>
+              <option value="both">wspólne (both)</option>
+              {buildings.map((b) => <option key={b.code} value={b.code}>{b.label}</option>)}
             </select>
           </div>
         )}
@@ -159,8 +150,8 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
                   </td>
                   {!isEcom && (
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded ${SCOPE_COLOR[r.scope] ?? 'bg-slate-100 text-slate-700'}`}>
-                        {SCOPE_LABEL[r.scope] ?? r.scope}
+                      <span className={`text-xs px-2 py-0.5 rounded ${buildingColor(r.scope)}`}>
+                        {buildingLabel(r.scope)}
                       </span>
                     </td>
                   )}

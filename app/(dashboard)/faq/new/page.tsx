@@ -13,6 +13,7 @@ export default async function NewFaqPage() {
     listCategories((await activeClientSlug())),
     getVertical((await activeClientSlug())),
   ])
+  const buildings = vertical === 'rental' ? await (await import('@/queries/buildings')).getBuildings() : []
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -37,6 +38,7 @@ export default async function NewFaqPage() {
           categories={categories}
           submitLabel="Utwórz"
           vertical={vertical}
+          buildings={buildings}
         />
       </div>
     </div>
