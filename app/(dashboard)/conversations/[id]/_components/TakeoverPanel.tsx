@@ -94,7 +94,7 @@ export function TakeoverPanel({
         </Button>
       </div>
 
-      {channel === 'webchat' ? (
+      {['webchat', 'messenger'].includes(channel) ? (
         <div className="flex gap-2 items-end">
           <textarea
             value={text}
@@ -116,14 +116,22 @@ export function TakeoverPanel({
         </div>
       ) : (
         <p className="text-xs text-slate-500">
-          Kanał {channel} — bot jest wyciszony, ale odpowiedz klientowi bezpośrednio w tym kanale
-          (odpowiadanie z panelu działa na razie tylko dla webchatu).
+          Kanał {channel} — bot jest wyciszony; odpowiedz klientowi bezpośrednio w tym kanale
+          (odpowiadanie z panelu: webchat i Messenger).
         </p>
       )}
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <p className="text-xs text-emerald-700/70">
-        Klient widzi odpowiedzi w okienku czatu na stronie (odświeżanie do ~5 s).
-      </p>
+      {channel === 'webchat' && (
+        <p className="text-xs text-emerald-700/70">
+          Klient widzi odpowiedzi w okienku czatu na stronie (odświeżanie do ~5 s).
+        </p>
+      )}
+      {channel === 'messenger' && (
+        <p className="text-xs text-emerald-700/70">
+          Odpowiedź trafia od razu do Messengera klienta (FB pozwala odpisać do 24 h od jego
+          ostatniej wiadomości).
+        </p>
+      )}
     </div>
   )
 }
