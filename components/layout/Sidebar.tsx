@@ -22,9 +22,11 @@ import {
   PenLine,
   BedDouble,
   CalendarCheck,
+  Calculator,
 } from 'lucide-react'
 
-// Menu e-commerce (produkcja KH) — NIE ZMIENIAĆ: musi wyglądać dokładnie jak dziś.
+// Menu e-commerce (produkcja KH) — zmieniać tylko świadomie (KH widzi to menu 1:1).
+// 07.2026: dodane Wyceny (moduł wycen B2B) — tylko vertical ecommerce.
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/poczta', label: 'Poczta', icon: Mail },
@@ -34,6 +36,7 @@ const navItems = [
   { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
   { href: '/reship', label: 'Dosyłki', icon: PackagePlus },
   { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2 },
+  { href: '/wyceny', label: 'Wyceny', icon: Calculator },
   { href: '/promo', label: 'Pasek promo', icon: Megaphone },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
