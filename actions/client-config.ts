@@ -82,15 +82,21 @@ async function saveTopLevel(
   return { ok: true, message: okMsg }
 }
 
+const VOICE_MODES = new Set(['callback', 'transfer'])
+
 export async function updateEscalation(slug: string, fd: FormData): Promise<ActionResult> {
   const email = s(fd, 'email')
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, message: 'Nieprawidłowy adres e-mail.' }
   }
+  const voiceMode = s(fd, 'voice_mode') || 'callback'
+  if (!VOICE_MODES.has(voiceMode)) {
+    return { ok: false, message: 'Nieprawidłowy tryb reakcji na eskalację (voice).' }
+  }
   return saveTopLevel(
     slug,
     'escalation',
-    { phone: s(fd, 'phone'), email },
+    { phone: s(fd, 'phone'), email, voice_mode: voiceMode },
     'Zapisano dane eskalacji.',
     `/clients/${slug}`,
   )

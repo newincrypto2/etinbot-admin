@@ -29,6 +29,7 @@ export function VoicePromptCard({
   const [prompt, setPrompt] = useState('')
   const [tools, setTools] = useState<VoiceTool[]>([])
   const [toolsNote, setToolsNote] = useState<string | null>(null)
+  const [escalationMode, setEscalationMode] = useState<'callback' | 'transfer' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -50,6 +51,7 @@ export function VoicePromptCard({
       setPrompt(r.prompt)
       setTools(r.tools)
       setToolsNote(r.toolsNote)
+      setEscalationMode(r.escalationMode)
       if (r.agentId != null) {
         setAgentId(r.agentId)
         setSavedAgentId(r.agentId)
@@ -92,6 +94,11 @@ export function VoicePromptCard({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {escalationMode && (
+            <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
+              Tryb eskalacji: {escalationMode === 'transfer' ? 'przełączenie' : 'oddzwonienie'}
+            </span>
+          )}
           {savedAgentId ? (
             <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">voice aktywny</span>
           ) : (

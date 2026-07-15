@@ -185,7 +185,7 @@ export async function getClientBySlug(slug: string): Promise<ClientCard | null> 
 // re-czyta config i merge'uje, więc tu wystarczą wartości do prefillu inputów.
 
 export type ClientConfigForms = {
-  escalation: { phone: string; email: string }
+  escalation: { phone: string; email: string; voice_mode: string }
   payment: { recipient: string; account: string; title_prefix: string }
   company: { legal_name: string; address: string; nip: string }
   shipping: { free_shipping_threshold: string; cutoff_hour: string }
@@ -225,7 +225,11 @@ export async function getClientConfigForms(slug: string): Promise<ClientConfigFo
   const allegro = coerceObj(integ.allegro)
   const features = coerceObj(cfg.features)
   return {
-    escalation: { phone: str(escalation.phone), email: str(escalation.email) },
+    escalation: {
+      phone: str(escalation.phone),
+      email: str(escalation.email),
+      voice_mode: str(escalation.voice_mode) || 'callback',
+    },
     payment: {
       recipient: str(payment.recipient),
       account: str(payment.account),

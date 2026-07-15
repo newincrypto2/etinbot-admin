@@ -24,6 +24,7 @@ export type VoicePromptResult =
       toolsNote: string | null
       agentId: string | null
       vertical: string | null
+      escalationMode: 'callback' | 'transfer'
     }
   | { ok: false; message: string }
 
@@ -38,6 +39,7 @@ export async function generateVoicePrompt(slug: string): Promise<VoicePromptResu
     return { ok: false, message: `Nie udało się wygenerować promptu (${r.status}). ${r.text.slice(0, 160)}` }
   }
   const d = r.data
+  const escalationMode = d.escalation_mode === 'transfer' ? 'transfer' : 'callback'
   return {
     ok: true,
     prompt: typeof d.prompt === 'string' ? d.prompt : '',
@@ -45,6 +47,7 @@ export async function generateVoicePrompt(slug: string): Promise<VoicePromptResu
     toolsNote: (d.tools_note as string | null) ?? null,
     agentId: (d.agent_id as string | null) ?? null,
     vertical: (d.vertical as string | null) ?? null,
+    escalationMode,
   }
 }
 

@@ -17,10 +17,11 @@ import type { ClientConfigForms } from '@/queries/clients'
 type Field = {
   name: string
   label: string
-  type?: 'text' | 'email' | 'tel' | 'number' | 'color'
+  type?: 'text' | 'email' | 'tel' | 'number' | 'color' | 'select'
   placeholder?: string
   hint?: string
   full?: boolean
+  options?: { value: string; label: string }[]
 }
 
 function Section({
@@ -68,6 +69,18 @@ function Section({
                 />
                 <span className="text-xs text-slate-400">{initial[f.name] || 'domyślny'}</span>
               </div>
+            ) : f.type === 'select' ? (
+              <select
+                name={f.name}
+                defaultValue={initial[f.name] ?? f.options?.[0]?.value ?? ''}
+                className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 bg-white"
+              >
+                {f.options?.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             ) : (
               <input
                 type={f.type ?? 'text'}
@@ -187,6 +200,23 @@ export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfig
         fields={[
           { name: 'phone', label: 'Telefon', type: 'tel', placeholder: '+48 600 100 200' },
           { name: 'email', label: 'E-mail', type: 'email', placeholder: 'kontakt@firma.pl' },
+          {
+            name: 'voice_mode',
+            label: 'Reakcja na eskalację (voice)',
+            type: 'select',
+            full: true,
+            options: [
+              {
+                value: 'callback',
+                label: 'Oddzwonienie — obsługa kontaktuje się niezwłocznie (SMS pilny do obsługi)',
+              },
+              {
+                value: 'transfer',
+                label: 'Przełączenie połączenia — wymaga narzędzia Transfer to number w ElevenLabs',
+              },
+            ],
+            hint: 'Callback: bot mówi że obsługa oddzwoni niezwłocznie w godzinach pracy biura, a Ty dostajesz SMS „skontaktuj się TERAZ”. Transfer: bot przełącza rozmowę — skonfiguruj transfer w agencie ElevenLabs (checklista w Prompt & sandbox).',
+          },
         ]}
       />
 
