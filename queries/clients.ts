@@ -192,6 +192,13 @@ export type ClientConfigForms = {
   webchat: { name: string; greeting: string; color: string }
   allegro: { hasClientId: boolean; hasRefreshToken: boolean }
   features: { ordering: boolean; order_lookup: boolean }
+  autonomy: {
+    reship_enabled: boolean
+    reship_max_qty: string
+    reship_window_days: string
+    reship_max_in_window: string
+    reship_generic_tokens: string
+  }
 }
 
 function str(v: unknown): string {
@@ -224,6 +231,7 @@ export async function getClientConfigForms(slug: string): Promise<ClientConfigFo
   const webchat = coerceObj(integ.webchat)
   const allegro = coerceObj(integ.allegro)
   const features = coerceObj(cfg.features)
+  const autonomy = coerceObj(integ.autonomy)
   return {
     escalation: {
       phone: str(escalation.phone),
@@ -252,6 +260,15 @@ export async function getClientConfigForms(slug: string): Promise<ClientConfigFo
     features: {
       ordering: boolDefaultTrue(features.ordering),
       order_lookup: boolDefaultTrue(features.order_lookup),
+    },
+    autonomy: {
+      reship_enabled: autonomy.reship_enabled === true,
+      reship_max_qty: str(autonomy.reship_max_qty),
+      reship_window_days: str(autonomy.reship_window_days),
+      reship_max_in_window: str(autonomy.reship_max_in_window),
+      reship_generic_tokens: Array.isArray(autonomy.reship_generic_tokens)
+        ? (autonomy.reship_generic_tokens as unknown[]).map(String).join(', ')
+        : '',
     },
   }
 }

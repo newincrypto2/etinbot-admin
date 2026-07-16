@@ -206,6 +206,52 @@ export async function updateFeatures(slug: string, fd: FormData): Promise<Action
   return { ok: true, message: 'Zapisano funkcje bota.' }
 }
 
+// ─── Autonomia dosyłek (config.integrations.autonomy) ───────────────────────
+// RMW: merge na istniejącą sekcję — pola spoza formularza (discount_*,
+// cancel_enabled) zostają nietknięte. Tokeny generyczne = słownictwo
+// produktowe tenanta (zasada SaaS: per klient w configu, nie w kodzie).
+
+export async function updateAutonomy(slug: string, fd: FormData): Promise<ActionResult> {
+  const guard = await assertRoleOrFail('SUPERADMIN')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const cfg = await readConfig(slug)
+  if (!cfg) return { ok: false, message: `Nie znaleziono klienta ${slug}.` }
+  const integ = coerceObj(cfg.integrations)
+  const section = coerceObj(integ.autonomy)
+
+  section.reship_enabled = fd.get('reship_enabled') === 'on'
+
+  for (const key of ['reship_max_qty', 'reship_window_days', 'reship_max_in_window'] as const) {
+    const raw = s(fd, key)
+    if (raw === '') {
+      delete section[key]
+      continue
+    }
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1) {
+      return { ok: false, message: `Pole „${key}" musi być liczbą całkowitą ≥ 1.` }
+    }
+    section[key] = n
+  }
+
+  const tokens = s(fd, 'reship_generic_tokens')
+    .split(/[,;\n]+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean)
+  if (tokens.length) section.reship_generic_tokens = tokens
+  else delete section.reship_generic_tokens
+
+  const r = await callBackend('/api/admin/set-integration', {
+    slug,
+    key: 'autonomy',
+    value_json: JSON.stringify(section),
+  })
+  if (!r.ok) return { ok: false, message: `Nie udało się zapisać (${r.status}). ${r.text.slice(0, 140)}` }
+  revalidatePath(`/clients/${slug}`)
+  return { ok: true, message: 'Zapisano ustawienia autonomii dosyłek.' }
+}
+
 // ─── Allegro Device Code Flow (endpointy buduje inny agent) ─────────────────
 
 export type AllegroStart =

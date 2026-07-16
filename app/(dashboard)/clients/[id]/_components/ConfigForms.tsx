@@ -11,6 +11,7 @@ import {
   updateShipping,
   updateWebchat,
   updateFeatures,
+  updateAutonomy,
 } from '@/actions/client-config'
 import type { ClientConfigForms } from '@/queries/clients'
 
@@ -176,6 +177,115 @@ function FeaturesSection({
   )
 }
 
+function AutonomySection({
+  slug,
+  initial,
+}: {
+  slug: string
+  initial: ClientConfigForms['autonomy']
+}) {
+  const [pending, startTransition] = useTransition()
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const r = await updateAutonomy(slug, fd)
+      if (r.ok) toast.success(r.message)
+      else toast.error(r.message)
+    })
+  }
+
+  const numFields = [
+    {
+      name: 'reship_max_qty' as const,
+      label: 'Maks. sztuk na zgłoszenie',
+      placeholder: '4',
+      hint: 'Powyżej progu — eskalacja do człowieka.',
+    },
+    {
+      name: 'reship_window_days' as const,
+      label: 'Okno anty-nadużyciowe (dni)',
+      placeholder: '30',
+      hint: 'Okres liczenia zgłoszeń od tego samego klienta.',
+    },
+    {
+      name: 'reship_max_in_window' as const,
+      label: 'Maks. dosyłek w oknie',
+      placeholder: '1',
+      hint: 'Kolejne zgłoszenie w oknie — eskalacja.',
+    },
+  ]
+
+  return (
+    <form onSubmit={submit} className="bg-white rounded-lg border p-5 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-800">Autonomia dosyłek</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Automatyczne zlecanie dosyłek uszkodzonych/brakujących produktów — zmiana statusu
+          zamówienia + zlecenie do magazynu (config.integrations.autonomy).
+        </p>
+      </div>
+      <label className="flex items-start gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          name="reship_enabled"
+          defaultChecked={initial.reship_enabled}
+          className="h-4 w-4 mt-0.5 rounded border-slate-300"
+        />
+        <span>
+          <span className="font-medium">Automatyczne dosyłki włączone</span>
+          <span className="block text-xs text-slate-500">
+            Wyłączone = bot zawsze eskaluje reklamacje uszkodzeń do człowieka.
+          </span>
+        </span>
+      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {numFields.map((f) => (
+          <div key={f.name}>
+            <label className="text-xs font-medium text-slate-600 block mb-1">{f.label}</label>
+            <input
+              type="number"
+              name={f.name}
+              min={1}
+              step={1}
+              defaultValue={initial[f.name]}
+              placeholder={f.placeholder}
+              className="w-full h-9 px-3 rounded-md border border-slate-300 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">{f.hint}</p>
+          </div>
+        ))}
+      </div>
+      <div>
+        <label className="text-xs font-medium text-slate-600 block mb-1">
+          Słowa generyczne asortymentu (oddziel przecinkami)
+        </label>
+        <textarea
+          name="reship_generic_tokens"
+          defaultValue={initial.reship_generic_tokens}
+          rows={2}
+          placeholder="np. bomba, bomby, herbaciana, herbaciane"
+          className="w-full px-3 py-2 rounded-md border border-slate-300 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+        />
+        <p className="text-[11px] text-slate-400 mt-1">
+          Słowa z nazw produktów tego sklepu zbyt ogólne, by wskazywały konkretną pozycję (rodzaj
+          asortymentu, odmiany). Guard dosyłek pomija je przy dopasowywaniu reklamowanej pozycji do
+          zawartości zamówienia — bez nich każda nazwa z takim słowem pasowałaby do wszystkiego.
+        </p>
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-9 px-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+      >
+        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        Zapisz
+      </button>
+    </form>
+  )
+}
+
 export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfigForms }) {
   // bind slug do każdej akcji
   const bind =
@@ -191,6 +301,8 @@ export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfig
       </p>
 
       <FeaturesSection slug={slug} initial={forms.features} />
+
+      <AutonomySection slug={slug} initial={forms.autonomy} />
 
       <Section
         title="Eskalacja"
