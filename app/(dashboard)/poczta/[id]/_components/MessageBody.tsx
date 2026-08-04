@@ -27,7 +27,9 @@ export function MessageBody({ text, inboundId }: { text: string; inboundId: stri
       setView('text')
       return
     }
-    if (html === undefined) {
+    // lokalna kopia — setHtml nie aktualizuje domknięcia w tym wywołaniu
+    let current = html
+    if (current === undefined) {
       if (!inboundId) return
       setLoading(true)
       try {
@@ -36,18 +38,14 @@ export function MessageBody({ text, inboundId }: { text: string; inboundId: stri
           setErr(r.message ?? 'Nie udało się pobrać HTML.')
           return
         }
-        if (!r.html) {
-          setHtml(null)
-          setErr('Ten mail nie ma wersji HTML (przyszedł jako czysty tekst).')
-          return
-        }
-        setHtml(r.html)
+        current = r.html ?? null
+        setHtml(current)
       } finally {
         setLoading(false)
       }
     }
-    if (html) setView('html')
-    else if (html === null) setErr('Ten mail nie ma wersji HTML (przyszedł jako czysty tekst).')
+    if (current) setView('html')
+    else setErr('Ten mail nie ma wersji HTML (przyszedł jako czysty tekst).')
   }
 
   const onFrameLoad = () => {
