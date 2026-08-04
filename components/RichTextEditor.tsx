@@ -205,7 +205,7 @@ export function RichTextEditor({
           onInput={syncFromEditor}
           onBlur={syncFromEditor}
           onPaste={onPaste}
-          className={`${minHeightClass} px-3 py-2.5 text-sm leading-relaxed focus:outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-h-24 [&_img]:inline-block`}
+          className={`${minHeightClass} px-3 py-2.5 text-sm leading-relaxed focus:outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-h-24 [&_img]:inline-block [&_p]:mb-3 [&_p:last-child]:mb-0`}
         />
       ) : (
         <textarea
