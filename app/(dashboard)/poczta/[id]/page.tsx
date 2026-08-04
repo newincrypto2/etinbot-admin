@@ -7,6 +7,7 @@ import { fmtFullDateTime, fmtDateShort } from '@/lib/datetime'
 import { EmailReplyPanel } from './_components/EmailReplyPanel'
 import { ThreadActions } from './_components/ThreadActions'
 import { ForwardButton } from './_components/ForwardButton'
+import { MessageBody } from './_components/MessageBody'
 
 const ROLE_LABEL: Record<string, { label: string; color: string }> = {
   user: { label: 'Klient', color: 'bg-blue-50 border-blue-200 text-blue-900' },
@@ -154,7 +155,7 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                     <span className="text-xs font-semibold uppercase tracking-wide opacity-70">{role.label}</span>
                     <span className="text-[11px] opacity-60">{fmtFullDateTime(m.createdAt)}</span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                  <MessageBody text={m.content} inboundId={m.role === 'user' ? inboundId : null} />
                   {attachments.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-black/5">
                       <div className="text-[11px] font-semibold opacity-60 mb-1.5 inline-flex items-center gap-1">

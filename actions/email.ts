@@ -27,6 +27,33 @@ async function currentUserEmail(): Promise<string | undefined> {
 
 export type EmailActionResult = { ok: boolean; message: string; draftId?: string; redirect?: boolean }
 
+/**
+ * Oryginalny HTML maila klienta (podgląd w wątku). Backend zwraca zapisany
+ * body_html albo dociąga re-fetchem ze skrzynki (maile sprzed migracji 050).
+ * Render WYŁĄCZNIE w sandboxowanym iframe — treść niezaufana.
+ */
+export async function getInboundHtml(
+  inboundId: string,
+): Promise<{ ok: boolean; html?: string | null; message?: string }> {
+  const session = await auth()
+  if (!session?.user?.email) return { ok: false, message: 'Brak sesji — zaloguj się ponownie.' }
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY w env panelu.' }
+  const res = await fetch(
+    `${base.replace(/\/$/, '')}/api/email/inbound-html?inbound_id=${encodeURIComponent(inboundId)}`,
+    { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' },
+  )
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    let detail = text.slice(0, 160)
+    try { detail = (JSON.parse(text).detail as string) ?? detail } catch { /* surowy tekst */ }
+    return { ok: false, message: `Nie udało się pobrać HTML (${res.status}). ${detail}` }
+  }
+  const data = (await res.json()) as { html?: string | null }
+  return { ok: true, html: data.html ?? null }
+}
+
 const FREEMAIL = new Set([
   'gmail.com', 'googlemail.com', 'wp.pl', 'onet.pl', 'poczta.onet.pl', 'o2.pl', 'go2.pl',
   'interia.pl', 'interia.eu', 'gazeta.pl', 'op.pl', 'poczta.fm', 'vp.pl', 'tlen.pl',
