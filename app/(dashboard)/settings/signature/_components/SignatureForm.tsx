@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Bold, Italic, Link2, Image as ImageIcon, Eraser, Code2 } from 'lucide-react'
 
@@ -62,16 +62,23 @@ export function SignatureForm({ action, initial }: {
     syncFromEditor()
   }
 
+  // Treść edytora ustawiana IMPERATYWNIE (mount + powrót z trybu HTML).
+  // UWAGA: żadnego dangerouslySetInnerHTML na contentEditable — React 19
+  // re-aplikuje je przy każdym re-renderze (np. po setHtml z onInput)
+  // i cofa edytor do wartości początkowej, kasując to co user wpisał.
+  useEffect(() => {
+    if (mode === 'visual' && editorRef.current) {
+      editorRef.current.innerHTML = html
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
+
   const toggleMode = () => {
     if (mode === 'visual') {
       syncFromEditor()
       setMode('html')
     } else {
-      // powrót do wizualnego — wstrzyknij aktualny HTML do edytora
-      setMode('visual')
-      requestAnimationFrame(() => {
-        if (editorRef.current) editorRef.current.innerHTML = html
-      })
+      setMode('visual') // useEffect wstrzyknie aktualny HTML
     }
   }
 
@@ -141,9 +148,6 @@ export function SignatureForm({ action, initial }: {
               onInput={syncFromEditor}
               onBlur={syncFromEditor}
               onPaste={onPaste}
-              // initial tylko przy pierwszym renderze — dalej DOM-em rządzi user;
-              // prop się nie zmienia, więc React nie nadpisuje treści edytora
-              dangerouslySetInnerHTML={{ __html: initial }}
               className="min-h-[10rem] px-3 py-2.5 text-sm leading-relaxed focus:outline-none [&_a]:text-indigo-600 [&_a]:underline [&_img]:max-h-24 [&_img]:inline-block"
             />
           ) : (
