@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Bold, Italic, Link2, Image as ImageIcon, Eraser, Code2 } from 'lucide-react'
+import { Bold, Italic, Link2, Image as ImageIcon, Eraser, Code2, Loader2, Upload } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import type { ActionResult } from '@/actions/signature'
+import { uploadSignatureImage, type ActionResult } from '@/actions/signature'
 
 /**
  * Edytor wizualny (WYSIWYG) na contentEditable — bez nowych zależności.
@@ -22,7 +22,38 @@ export function SignatureForm({ action, initial }: {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
   const [html, setHtml] = useState(initial)
   const [mode, setMode] = useState<'visual' | 'html'>('visual')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  // Dialog wyboru pliku zabiera focus edytorowi — zapamiętujemy pozycję kursora,
+  // żeby po uploadzie wstawić obrazek tam gdzie stał kursor, nie na początku.
+  const savedRange = useRef<Range | null>(null)
+
+  const saveSelection = () => {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedRange.current = sel.getRangeAt(0).cloneRange()
+    }
+  }
+
+  const restoreSelection = () => {
+    const ed = editorRef.current
+    if (!ed) return
+    ed.focus()
+    const sel = window.getSelection()
+    if (!sel) return
+    sel.removeAllRanges()
+    if (savedRange.current) {
+      sel.addRange(savedRange.current)
+    } else {
+      // brak zapamiętanej pozycji → kursor na koniec treści
+      const range = document.createRange()
+      range.selectNodeContents(ed)
+      range.collapse(false)
+      sel.addRange(range)
+    }
+  }
 
   const syncFromEditor = () => {
     if (editorRef.current) setHtml(editorRef.current.innerHTML)
@@ -52,6 +83,33 @@ export function SignatureForm({ action, initial }: {
       return
     }
     exec('insertImage', url)
+  }
+
+  const onPickUpload = () => {
+    saveSelection()
+    fileRef.current?.click()
+  }
+
+  const onUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // pozwól wybrać ten sam plik ponownie
+    if (!file) return
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const r = await uploadSignatureImage(fd)
+      if (!r.ok || !r.url) {
+        setUploadError(r.message ?? 'Upload nie powiódł się.')
+        return
+      }
+      restoreSelection()
+      document.execCommand('insertImage', false, r.url)
+      syncFromEditor()
+    } finally {
+      setUploading(false)
+    }
   }
 
   const onPaste = (e: React.ClipboardEvent) => {
@@ -118,7 +176,12 @@ export function SignatureForm({ action, initial }: {
               disabled={mode === 'html'}>
               <Link2 className="h-4 w-4" />
             </button>
-            <button type="button" title="Wstaw obrazek (URL)" className={toolBtn}
+            <button type="button" title="Wgraj obrazek z dysku (logo)" className={toolBtn}
+              onMouseDown={(e) => e.preventDefault()} onClick={onPickUpload}
+              disabled={mode === 'html' || uploading}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            </button>
+            <button type="button" title="Wstaw obrazek z adresu URL" className={toolBtn}
               onMouseDown={(e) => e.preventDefault()} onClick={onAddImage}
               disabled={mode === 'html'}>
               <ImageIcon className="h-4 w-4" />
@@ -161,9 +224,22 @@ export function SignatureForm({ action, initial }: {
           )}
         </div>
 
+        {/* ukryty input pliku dla przycisku uploadu */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={onUploadFile}
+        />
+
+        {uploadError && (
+          <p className="text-xs text-red-600 mt-1.5">{uploadError}</p>
+        )}
         <p className="text-xs text-slate-500 mt-1.5">
-          Zaznacz tekst i użyj przycisków, żeby pogrubić albo dodać link. Obrazek (np. logo)
-          wstawisz przez URL. Wklejany tekst trafia bez obcego formatowania.
+          Zaznacz tekst i użyj przycisków, żeby pogrubić albo dodać link. Logo wgrasz z dysku
+          (PNG/JPG/GIF/WEBP, max 2 MB) albo wstawisz przez URL. Wklejany tekst trafia bez
+          obcego formatowania.
         </p>
       </div>
 

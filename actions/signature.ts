@@ -55,3 +55,43 @@ export async function saveMySignature(_prev: ActionResult, fd: FormData): Promis
   revalidatePath('/settings/signature')
   return { ok: true, message: html === '' ? 'Stopka wyczyszczona.' : 'Zapisano stopkę ✅' }
 }
+
+/**
+ * Upload obrazka (logo) do stopki — backend hostuje plik publicznie i zwraca
+ * URL do wstawienia w <img src>. Multipart przekazywany 1:1 do backendu.
+ */
+export async function uploadSignatureImage(
+  fd: FormData,
+): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return { ok: false, message: 'Brak sesji — zaloguj się ponownie.' }
+
+  const file = fd.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: 'Brak pliku.' }
+  }
+
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY w env panelu.' }
+
+  const out = new FormData()
+  out.append('file', file)
+  out.append('uploaded_by', email)
+  const res = await fetch(`${base.replace(/\/$/, '')}/api/admin/signature-image`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}` },
+    body: out,
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    let detail = text.slice(0, 160)
+    try { detail = JSON.parse(text).detail ?? detail } catch { /* surowy tekst */ }
+    return { ok: false, message: `Upload nie powiódł się (${res.status}). ${detail}` }
+  }
+  const data = (await res.json()) as { url?: string }
+  if (!data.url) return { ok: false, message: 'Backend nie zwrócił URL obrazka.' }
+  return { ok: true, url: data.url }
+}
