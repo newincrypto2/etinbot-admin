@@ -102,6 +102,7 @@ export async function sendDraft(
   draftId: string,
   conversationId: string,
   bodyText?: string,
+  bodyRich?: string,
 ): Promise<EmailActionResult> {
   const guard = await assertRoleOrFail('EDITOR')
   if (!guard.ok) return { ok: false, message: guard.message }
@@ -111,6 +112,7 @@ export async function sendDraft(
   const r = await callBackend('/api/email/send', {
     draft_id: draftId,
     body_text: bodyText,
+    body_rich: bodyRich,
     signer_name: signer,
     actor_email: actorEmail,
   })

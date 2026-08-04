@@ -6,6 +6,7 @@ import { Send, Sparkles, Trash2, AlertTriangle, Wand2, Paperclip, X } from 'luci
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { RichTextEditor, textToHtml } from '@/components/RichTextEditor'
 import { Textarea } from '@/components/ui/textarea'
 import {
   sendDraft,
@@ -39,7 +40,12 @@ function fmtBytes(n: number): string {
 export function EmailReplyPanel({ conversationId, draft }: { conversationId: string; draft: Draft | null }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  // Allegro (Centrum Wiadomości / reklamacje) przyjmuje WYŁĄCZNIE tekst —
+  // edytor graficzny tylko dla kanału email.
+  const isAllegro = draft?.mailboxAddress === 'allegro' || draft?.mailboxAddress === 'allegro_issue'
   const [body, setBody] = useState(draft?.bodyText ?? '')
+  // WYSIWYG: draft bota (plain text) konwertowany na akapity HTML przy starcie
+  const [bodyHtml, setBodyHtml] = useState(() => textToHtml(draft?.bodyText ?? ''))
   const [core, setCore] = useState('')
   const [mode, setMode] = useState<'draft' | 'quick'>(draft ? 'draft' : 'quick')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -56,7 +62,12 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
     if (!draft) return
     const cc = draft.ccAddresses?.length ? ` (DW: ${draft.ccAddresses.join(', ')})` : ''
     if (!confirm(`Wysłać odpowiedź do ${draft.toAddress}${cc} z adresu ${draft.mailboxAddress}?`)) return
-    run(() => sendDraft(draft.id, conversationId, body))
+    if (isAllegro) {
+      run(() => sendDraft(draft.id, conversationId, body))
+    } else {
+      // email: HTML z WYSIWYG; backend sanityzuje i deryuje wersję tekstową
+      run(() => sendDraft(draft.id, conversationId, undefined, bodyHtml))
+    }
   }
   const onDiscard = () => draft && run(() => discardDraft(draft.id, conversationId))
   const onWrap = () => run(() => wrapQuickReply(conversationId, core))
@@ -132,13 +143,21 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
             <div className="text-sm text-slate-500">
               Temat: <span className="text-slate-800">{draft.subject}</span>
             </div>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={12}
-              className="font-sans text-sm leading-relaxed"
-              placeholder="Treść odpowiedzi…"
-            />
+            {isAllegro ? (
+              <Textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={12}
+                className="font-sans text-sm leading-relaxed"
+                placeholder="Treść odpowiedzi…"
+              />
+            ) : (
+              <RichTextEditor
+                initialHtml={bodyHtml}
+                onChange={setBodyHtml}
+                minHeightClass="min-h-[16rem]"
+              />
+            )}
 
             {/* Załączniki */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -169,7 +188,11 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
               <Button variant="outline" onClick={onDiscard} disabled={pending} className="gap-1.5 text-slate-600">
                 <Trash2 className="h-4 w-4" /> Odrzuć
               </Button>
-              <Button onClick={onSend} disabled={pending || !body.trim()} className="gap-1.5">
+              <Button
+                onClick={onSend}
+                disabled={pending || (isAllegro ? !body.trim() : !bodyHtml.replace(/<[^>]+>/g, '').trim())}
+                className="gap-1.5"
+              >
                 <Send className="h-4 w-4" />
                 {pending ? 'Wysyłanie…' : 'Zatwierdź i wyślij'}
               </Button>
