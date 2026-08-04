@@ -217,6 +217,15 @@ export function RichTextEditor({
         />
       )}
 
+      {/* ukryty input pliku dla przycisku uploadu (fileRef.current.click()) */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        onChange={onUploadFile}
+      />
+
       {uploadError && (
         <p className="text-xs text-red-600 px-3 pb-2">{uploadError}</p>
       )}
