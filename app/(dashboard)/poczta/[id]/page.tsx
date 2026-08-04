@@ -205,6 +205,7 @@ export default async function PocztaThreadPage(props: { params: Promise<{ id: st
                     origin: pendingDraft.origin,
                     escalated: pendingDraft.escalated,
                     toAddress: pendingDraft.toAddress,
+                    ccAddresses: pendingDraft.ccAddresses,
                     mailboxAddress: pendingDraft.mailboxAddress,
                     attachments: pendingDraft.attachments,
                   }

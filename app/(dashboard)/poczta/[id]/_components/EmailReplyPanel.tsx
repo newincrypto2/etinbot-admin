@@ -24,6 +24,7 @@ type Draft = {
   origin: string
   escalated: boolean
   toAddress: string
+  ccAddresses?: string[]
   mailboxAddress: string
   attachments: Attachment[]
 }
@@ -53,7 +54,8 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
 
   const onSend = () => {
     if (!draft) return
-    if (!confirm(`Wysłać odpowiedź do ${draft.toAddress} z adresu ${draft.mailboxAddress}?`)) return
+    const cc = draft.ccAddresses?.length ? ` (DW: ${draft.ccAddresses.join(', ')})` : ''
+    if (!confirm(`Wysłać odpowiedź do ${draft.toAddress}${cc} z adresu ${draft.mailboxAddress}?`)) return
     run(() => sendDraft(draft.id, conversationId, body))
   }
   const onDiscard = () => draft && run(() => discardDraft(draft.id, conversationId))
@@ -106,8 +108,13 @@ export function EmailReplyPanel({ conversationId, draft }: { conversationId: str
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="text-sm text-slate-500">
-                Do: <span className="text-slate-800">{draft.toAddress}</span> · z:{' '}
-                <span className="text-slate-800">{draft.mailboxAddress}</span>
+                Do: <span className="text-slate-800">{draft.toAddress}</span>
+                {(draft.ccAddresses?.length ?? 0) > 0 && (
+                  <>
+                    {' '}· DW: <span className="text-slate-800">{draft.ccAddresses!.join(', ')}</span>
+                  </>
+                )}{' '}
+                · z: <span className="text-slate-800">{draft.mailboxAddress}</span>
               </div>
               <div className="flex items-center gap-2">
                 {draft.origin === 'human_quick' && (

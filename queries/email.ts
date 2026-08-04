@@ -197,6 +197,7 @@ export type EmailThreadDetail = {
     origin: string
     escalated: boolean
     toAddress: string
+    ccAddresses: string[]
     mailboxAddress: string
     createdAt: Date
     sentAt: Date | null
@@ -289,6 +290,10 @@ export async function getEmailThread(id: string): Promise<EmailThreadDetail | nu
       origin: d.origin,
       escalated: d.escalated,
       toAddress: d.to_address,
+      // jsonb przez driver adapter bywa stringiem — coerce (patrz coerceArr)
+      ccAddresses: (coerceArr(d.cc_addresses) as unknown[]).filter(
+        (a): a is string => typeof a === 'string',
+      ),
       mailboxAddress: d.mailbox_address,
       createdAt: d.created_at,
       sentAt: d.sent_at,
