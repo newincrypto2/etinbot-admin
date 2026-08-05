@@ -142,6 +142,53 @@ export async function resetUserPassword(
   return { ok: true, message: 'Hasło zresetowane' }
 }
 
+// ---- Zmiana własnego hasła (self-service, każdy zalogowany) ----
+
+const ChangeOwnPasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Podaj obecne hasło'),
+    newPassword: z.string().min(8, 'Nowe hasło min. 8 znaków').max(200),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Hasła nie są identyczne',
+    path: ['confirmPassword'],
+  })
+
+/**
+ * Użytkownik zmienia WYŁĄCZNIE własne hasło — konto z sesji, nie z formularza.
+ * Wymaga podania obecnego hasła (weryfikacja bcrypt).
+ */
+export async function changeOwnPassword(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return { ok: false, message: 'Brak sesji — zaloguj się ponownie' }
+
+  const parsed = ChangeOwnPasswordSchema.safeParse({
+    currentPassword: (fd.get('currentPassword') as string) ?? '',
+    newPassword: (fd.get('newPassword') as string) ?? '',
+    confirmPassword: (fd.get('confirmPassword') as string) ?? '',
+  })
+  if (!parsed.success) {
+    const errors: Record<string, string> = {}
+    parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
+    return { ok: false, message: parsed.error.issues[0]?.message ?? 'Błędy walidacji', errors }
+  }
+
+  const user = await prisma.adminUser.findUnique({ where: { email } })
+  if (!user || !user.isActive) return { ok: false, message: 'Konto nieaktywne' }
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash)
+  if (!valid) return { ok: false, message: 'Obecne hasło jest niepoprawne' }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12)
+  await prisma.adminUser.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  })
+  return { ok: true, message: 'Hasło zmienione' }
+}
+
 // ---- Delete ----
 
 export async function deleteUser(userId: string): Promise<ActionResult> {
