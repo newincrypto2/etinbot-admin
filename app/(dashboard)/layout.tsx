@@ -28,8 +28,18 @@ export default async function DashboardLayout({
     tenantSelector = <TenantSelector tenants={tenants} active={active.slug} />
   }
 
+  // Imię z DB, nie z JWT — po edycji na /konto nagłówek pokazuje nowe od razu.
+  let freshName = session.user?.name
+  if (session.user?.email) {
+    const me = await prisma.adminUser.findUnique({
+      where: { email: session.user.email },
+      select: { name: true },
+    })
+    if (me?.name) freshName = me.name
+  }
+
   return (
-    <DashboardShell user={{ ...session.user, role }} tenantSelector={tenantSelector} vertical={active.vertical}>
+    <DashboardShell user={{ ...session.user, name: freshName, role }} tenantSelector={tenantSelector} vertical={active.vertical}>
       {children}
     </DashboardShell>
   )

@@ -19,8 +19,6 @@ import {
   Megaphone,
   Building2,
   PackagePlus,
-  PenLine,
-  KeyRound,
   BedDouble,
   CalendarCheck,
   Calculator,
@@ -42,8 +40,6 @@ const navItems = [
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
-  { href: '/settings/signature', label: 'Moja stopka', icon: PenLine },
-  { href: '/settings/password', label: 'Zmiana hasła', icon: KeyRound },
 ]
 
 // Menu rental (najem krótkoterminowy) — wspólne pozycje + Apartamenty/Rezerwacje
@@ -58,8 +54,6 @@ const rentalNavItems = [
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
   { href: '/billing', label: 'Koszty', icon: Coins },
-  { href: '/settings/signature', label: 'Moja stopka', icon: PenLine },
-  { href: '/settings/password', label: 'Zmiana hasła', icon: KeyRound },
 ]
 
 const adminItems = [

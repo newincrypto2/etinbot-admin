@@ -142,6 +142,34 @@ export async function resetUserPassword(
   return { ok: true, message: 'Hasło zresetowane' }
 }
 
+// ---- Edycja własnych danych (self-service, każdy zalogowany) ----
+
+const UpdateOwnNameSchema = z.object({
+  name: z.string().min(2, 'Imię min. 2 znaki').max(100),
+})
+
+/** Użytkownik edytuje WYŁĄCZNIE własne imię i nazwisko — konto z sesji. */
+export async function updateOwnName(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return { ok: false, message: 'Brak sesji — zaloguj się ponownie' }
+
+  const parsed = UpdateOwnNameSchema.safeParse({
+    name: (fd.get('name') as string)?.trim() ?? '',
+  })
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? 'Błąd walidacji' }
+  }
+
+  await prisma.adminUser.update({
+    where: { email },
+    data: { name: parsed.data.name },
+  })
+  revalidatePath('/konto')
+  revalidatePath('/', 'layout')
+  return { ok: true, message: 'Dane zapisane' }
+}
+
 // ---- Zmiana własnego hasła (self-service, każdy zalogowany) ----
 
 const ChangeOwnPasswordSchema = z

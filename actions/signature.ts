@@ -52,7 +52,7 @@ export async function saveMySignature(_prev: ActionResult, fd: FormData): Promis
   }
 
   // Odśwież prefill (własny rekord AdminUser czytany z Prisma na stronie).
-  revalidatePath('/settings/signature')
+  revalidatePath('/konto')
   return { ok: true, message: html === '' ? 'Stopka wyczyszczona.' : 'Zapisano stopkę ✅' }
 }
 

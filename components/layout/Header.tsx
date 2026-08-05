@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -50,7 +51,11 @@ export function Header({ user, tenantSelector, onMenuToggle }: HeaderProps) {
 
       <div className="flex items-center gap-2 ml-auto">
         {tenantSelector}
-        <div className="hidden sm:flex items-center gap-2.5">
+        <Link
+          href="/konto"
+          title="Moje konto"
+          className="hidden sm:flex items-center gap-2.5 rounded-lg px-2 py-1 -mx-1 hover:bg-gray-100 transition-colors"
+        >
           <Avatar className="h-8 w-8">
             <AvatarFallback className="text-xs font-medium" style={{ backgroundColor: avatarColor.bg, color: avatarColor.fg }}>
               {initials}
@@ -62,15 +67,15 @@ export function Header({ user, tenantSelector, onMenuToggle }: HeaderProps) {
               {({ SUPERADMIN: 'Superadmin', ADMIN: 'Administrator', OWNER: 'Operator', EDITOR: 'Editor', VIEWER: 'Viewer', AGENT: 'Agent' } as Record<string, string>)[user.role?.toUpperCase?.() ?? ''] ?? user.role}
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="sm:hidden">
+        <Link href="/konto" title="Moje konto" className="sm:hidden">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="text-xs font-medium" style={{ backgroundColor: avatarColor.bg, color: avatarColor.fg }}>
               {initials}
             </AvatarFallback>
           </Avatar>
-        </div>
+        </Link>
 
         <Button
           variant="ghost"
