@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { activeClientId } from '@/lib/tenant'
+import { orderAdminUrl, normalizeOrderSource, wcUrlForClient } from '@/lib/order-links'
 
 // ─── Coerce items (migration 026: items_text TEXT, ale rekordy mogą trzymać JSON) ─
 
@@ -41,6 +42,9 @@ export type ReshipRow = {
   id: string
   orderNumber: string | null
   extId: string | null
+  /** Link do zamówienia w systemie źródłowym (panel BL / wp-admin WC) — lib/order-links.ts.
+   *  null gdy zamówienie nie ma dopasowania w orders_cache albo źródło nieznane/bez wcUrl. */
+  adminUrl: string | null
   customerEmail: string | null
   customerPhone: string | null
   items: ReshipItem[]
@@ -68,15 +72,37 @@ export async function listReshipRequests(): Promise<ReshipRow[]> {
       created_at: true,
     },
   })
-  return rows.map((r) => ({
-    id: r.id,
-    orderNumber: r.order_number,
-    extId: r.ext_id,
-    customerEmail: r.customer_email,
-    customerPhone: r.customer_phone,
-    items: coerceItems(r.items_text),
-    reason: r.reason,
-    status: r.status,
-    createdAt: r.created_at,
-  }))
+
+  // Dopasowanie source per zamówienie (orders_cache.client_id+ext_id jest unique) —
+  // link musi wskazywać na właściwy system źródłowy (BaseLinker vs WooCommerce),
+  // nie hardcodowany panel BL jak wcześniej.
+  const extIds = Array.from(new Set(rows.map((r) => r.ext_id).filter((v): v is string => !!v)))
+  const sourceByExtId = new Map<string, string | null>()
+  if (extIds.length > 0) {
+    const orders = await prisma.orders_cache.findMany({
+      where: { client_id: clientId, ext_id: { in: extIds } },
+      select: { ext_id: true, source: true },
+    })
+    for (const o of orders) sourceByExtId.set(o.ext_id, o.source)
+  }
+  const hasWooCommerce = Array.from(sourceByExtId.values()).some(
+    (s) => normalizeOrderSource(s) === 'woocommerce',
+  )
+  const wcUrl = hasWooCommerce ? await wcUrlForClient(clientId) : null
+
+  return rows.map((r) => {
+    const source = r.ext_id ? sourceByExtId.get(r.ext_id) ?? null : null
+    return {
+      id: r.id,
+      orderNumber: r.order_number,
+      extId: r.ext_id,
+      adminUrl: r.ext_id ? orderAdminUrl({ source, extId: r.ext_id, wcUrl }) : null,
+      customerEmail: r.customer_email,
+      customerPhone: r.customer_phone,
+      items: coerceItems(r.items_text),
+      reason: r.reason,
+      status: r.status,
+      createdAt: r.created_at,
+    }
+  })
 }

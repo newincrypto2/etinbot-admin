@@ -19,10 +19,10 @@ function StatusBadge({ status }: { status: string }) {
 
 function OrderCell({ row }: { row: ReshipRow }) {
   const label = row.orderNumber || row.extId || '—'
-  if (row.extId) {
+  if (row.adminUrl) {
     return (
       <a
-        href={`https://panel-e.baselinker.com/orders.php#order:${row.extId}`}
+        href={row.adminUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="text-indigo-600 hover:underline font-medium"

@@ -73,7 +73,10 @@ export function Sidebar({ role, vertical, open, onClose }: SidebarProps) {
 
   // Nawigacja zależna od verticala AKTYWNEGO tenanta. Domyślnie (i dla ecommerce)
   // menu e-commerce — gwarantuje zero zmian dla KH. Rental dostaje własny zestaw.
-  const items = vertical === 'rental' ? rentalNavItems : navItems
+  const baseItems = vertical === 'rental' ? rentalNavItems : navItems
+  // Koszty = dane finansowe/marże — ukryte dla ról poniżej OWNER (spójne z page guard).
+  const isOwnerUp = role === 'SUPERADMIN' || role === 'OWNER'
+  const items = isOwnerUp ? baseItems : baseItems.filter((i) => i.href !== '/billing')
 
   const content = (
     <>

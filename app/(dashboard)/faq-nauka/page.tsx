@@ -3,10 +3,15 @@ import { GraduationCap } from 'lucide-react'
 import { listFaqCandidates } from '@/queries/email'
 import { CandidateCard } from './_components/CandidateCard'
 import { activeClientSlug } from '@/lib/tenant'
+import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
 
 
 export default async function FaqNaukaPage() {
-  const candidates = await listFaqCandidates({ clientSlug: (await activeClientSlug()), status: 'pending' })
+  const [candidates, role] = await Promise.all([
+    listFaqCandidates({ clientSlug: (await activeClientSlug()), status: 'pending' }),
+    getCurrentRole(),
+  ])
+  const canEdit = hasRole(role, 'EDITOR')
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -31,7 +36,7 @@ export default async function FaqNaukaPage() {
         <div className="space-y-4">
           <p className="text-sm text-slate-500">{candidates.length} kandydat(ów) do przeglądu</p>
           {candidates.map((c) => (
-            <CandidateCard key={c.id} c={c} />
+            <CandidateCard key={c.id} c={c} canEdit={canEdit} />
           ))}
         </div>
       )}

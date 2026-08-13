@@ -40,7 +40,7 @@ export default async function SettingsPage() {
           description={
             <>
               {settings.escalationPhoneOffice && <div>Biuro: {settings.escalationPhoneOffice}</div>}
-              {settings.escalationPhoneSecurity && <div>Ochrona 24/7: {settings.escalationPhoneSecurity}</div>}
+              {settings.escalationPhoneSecurity && <div>{isEcom ? 'Numer alarmowy' : 'Ochrona 24/7'}: {settings.escalationPhoneSecurity}</div>}
               {settings.escalationEmail && <div>Email: {settings.escalationEmail}</div>}
             </>
           }

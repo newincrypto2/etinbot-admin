@@ -67,7 +67,9 @@ export function AcceptAsFaqDialog({
             <Label className="text-xs font-medium block mb-1">Pytanie (po polsku)</Label>
             <Input name="question" defaultValue={suggestedQuestion} required maxLength={500}
               placeholder={vertical === 'ecommerce' ? 'np. Ile trwa dostawa?' : 'np. Czy mogę przyjechać z psem?'} />
-            <p className="text-xs text-slate-500 mt-1">Wstępna treść z wiadomości gościa — popraw jeśli trzeba.</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Wstępna treść z wiadomości {vertical === 'ecommerce' ? 'klienta' : 'gościa'} — popraw jeśli trzeba.
+            </p>
             {state.errors?.question && <p className="text-xs text-red-600 mt-1">{state.errors.question}</p>}
           </div>
 

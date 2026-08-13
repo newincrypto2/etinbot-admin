@@ -1,13 +1,20 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { getApartmentById } from '@/queries/apartments'
 import { updateApartment } from '@/actions/apartments'
 import { ApartmentForm } from '../../_components/ApartmentForm'
 import { getBuildings } from '@/queries/buildings'
+import { requireRole } from '@/lib/auth-helpers'
+import { getVertical } from '@/queries/client'
+import { activeClientSlug } from '@/lib/tenant'
 
 export default async function EditApartmentPage(props: { params: Promise<{ id: string }> }) {
+  await requireRole('EDITOR')
+  const vertical = await getVertical((await activeClientSlug()))
+  if (vertical !== 'rental') redirect('/')
+
   const { id } = await props.params
   const apt = await getApartmentById(id)
   if (!apt) notFound()

@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { resolveEscalation, type ActionResult } from '@/actions/escalations'
 
-export function ResolveDialog({ open, onOpenChange, escalationId }: {
+export function ResolveDialog({ open, onOpenChange, escalationId, vertical = 'rental' }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   escalationId: string
+  vertical?: 'rental' | 'ecommerce'
 }) {
   const router = useRouter()
   const action = resolveEscalation.bind(null, escalationId)
@@ -49,7 +50,9 @@ export function ResolveDialog({ open, onOpenChange, escalationId }: {
               name="note"
               rows={3}
               maxLength={1000}
-              placeholder="np. „Zadzwoniłem do gościa, kod do drzwi działa po restarcie smartlocka"
+              placeholder={vertical === 'ecommerce'
+                ? 'np. „Skontaktowałem się z klientem, dosyłka zlecona"'
+                : 'np. „Zadzwoniłem do gościa, kod do drzwi działa po restarcie smartlocka"'}
             />
             <p className="text-xs text-slate-500 mt-1">
               Notatka zostanie zapisana w historii rozmowy.

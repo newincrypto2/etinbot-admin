@@ -30,7 +30,8 @@ function parseMonth(raw: string | null): { iso: string; start: Date; end: Date }
 }
 
 export async function GET(req: NextRequest) {
-  await requireRole('EDITOR')
+  // Dane finansowe / marże — tylko OWNER wzwyż (spójne z /billing).
+  await requireRole('OWNER')
 
   const { searchParams } = req.nextUrl
   const month = parseMonth(searchParams.get('month'))

@@ -338,7 +338,7 @@ export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfig
         initial={forms.payment as unknown as Record<string, string>}
         onSave={bind(updatePayment)}
         fields={[
-          { name: 'recipient', label: 'Odbiorca', placeholder: 'Kraina Herbaty Sp. z o.o.' },
+          { name: 'recipient', label: 'Odbiorca', placeholder: 'np. Twoja Firma Sp. z o.o.' },
           { name: 'account', label: 'Numer konta', placeholder: 'PL00 0000 0000 0000 0000 0000 0000' },
           {
             name: 'title_prefix',
@@ -395,7 +395,7 @@ export function ConfigForms({ slug, forms }: { slug: string; forms: ClientConfig
         initial={forms.company as unknown as Record<string, string>}
         onSave={bind(updateCompany)}
         fields={[
-          { name: 'legal_name', label: 'Nazwa prawna', placeholder: 'Kraina Herbaty Sp. z o.o.', full: true },
+          { name: 'legal_name', label: 'Nazwa prawna', placeholder: 'np. Twoja Firma Sp. z o.o.', full: true },
           { name: 'address', label: 'Adres', placeholder: 'ul. Przykładowa 1, 00-000 Miasto', full: true },
           { name: 'nip', label: 'NIP', placeholder: '0000000000' },
         ]}

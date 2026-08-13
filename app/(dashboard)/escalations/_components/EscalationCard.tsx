@@ -91,7 +91,9 @@ export function EscalationCard({
           {(escalation.summary || escalation.lastUserMessage) && (
             <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
               <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-1">
-                {escalation.summary ? 'Podsumowanie rozmowy' : 'Ostatnia wiadomość gościa'}
+                {escalation.summary
+                  ? 'Podsumowanie rozmowy'
+                  : vertical === 'ecommerce' ? 'Ostatnia wiadomość klienta' : 'Ostatnia wiadomość gościa'}
               </div>
               <div className="text-sm text-slate-800">
                 {escalation.summary
@@ -172,6 +174,7 @@ export function EscalationCard({
         open={resolveOpen}
         onOpenChange={setResolveOpen}
         escalationId={escalation.id}
+        vertical={vertical}
       />
       <AcceptAsFaqDialog
         open={acceptOpen}

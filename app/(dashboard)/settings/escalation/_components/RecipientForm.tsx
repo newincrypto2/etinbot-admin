@@ -18,9 +18,15 @@ type Props = {
   buildings?: import('@/lib/building-format').BuildingOption[]
 }
 
-const ROLE_OPTIONS = [
+const ROLE_OPTIONS_RENTAL = [
   { value: 'office', label: 'Biuro / obsługa' },
   { value: 'security', label: 'Ochrona 24/7' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'owner', label: 'Właściciel' },
+]
+
+const ROLE_OPTIONS_ECOMMERCE = [
+  { value: 'office', label: 'Biuro / obsługa' },
   { value: 'manager', label: 'Manager' },
   { value: 'owner', label: 'Właściciel' },
 ]
@@ -33,6 +39,7 @@ const SEVERITY_OPTIONS = [
 
 export function RecipientForm({ action, initial, onDone, vertical = 'rental', buildings = [] }: Props) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
+  const roleOptions = vertical === 'ecommerce' ? ROLE_OPTIONS_ECOMMERCE : ROLE_OPTIONS_RENTAL
 
   const isOk = state.ok && state.message
   if (isOk && onDone) {
@@ -68,7 +75,7 @@ export function RecipientForm({ action, initial, onDone, vertical = 'rental', bu
         <div>
           <Label className="text-xs font-medium block mb-1">Rola</Label>
           <select name="role" defaultValue={initial?.role ?? 'office'} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-            {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {roleOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         {vertical === 'ecommerce' ? (

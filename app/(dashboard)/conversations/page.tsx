@@ -4,6 +4,7 @@ import { MessageCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { listConversations, getConversationStats } from '@/queries/conversations'
 import { fmtDateTime } from '@/lib/datetime'
 import { activeClientSlug } from '@/lib/tenant'
+import { getVertical } from '@/queries/client'
 
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -46,10 +47,12 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
   const channel = params.channel ?? 'all'
   const search = params.q ?? ''
 
-  const [rows, stats] = await Promise.all([
+  const [rows, stats, vertical] = await Promise.all([
     listConversations({ clientSlug: (await activeClientSlug()), status, channel, search, limit: 200 }),
     getConversationStats((await activeClientSlug())),
+    getVertical((await activeClientSlug())),
   ])
+  const isEcom = vertical === 'ecommerce'
 
   return (
     <div className="space-y-6">
@@ -105,7 +108,7 @@ export default async function ConversationsPage(props: { searchParams: SearchPar
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-600 uppercase tracking-wide">Gość / thread</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-600 uppercase tracking-wide">{isEcom ? 'Klient / thread' : 'Gość / thread'}</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-600 uppercase tracking-wide w-32">Kanał</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-600 uppercase tracking-wide w-32">Status</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-600 uppercase tracking-wide w-20 text-center">Wiad.</th>

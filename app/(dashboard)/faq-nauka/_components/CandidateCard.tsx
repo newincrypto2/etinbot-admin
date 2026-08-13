@@ -17,7 +17,7 @@ const SOURCE_LABEL: Record<string, { label: string; color: string }> = {
   escalated: { label: 'Bot nie był pewien', color: 'bg-red-100 text-red-700' },
 }
 
-export function CandidateCard({ c }: { c: FaqCandidate }) {
+export function CandidateCard({ c, canEdit = true }: { c: FaqCandidate; canEdit?: boolean }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [question, setQuestion] = useState(c.suggestedQuestion ?? '')
@@ -72,13 +72,14 @@ export function CandidateCard({ c }: { c: FaqCandidate }) {
       {/* Propozycja wpisu FAQ (edytowalna) */}
       <div className="space-y-2 pt-1">
         <div className="text-[11px] font-semibold text-slate-500 inline-flex items-center gap-1">
-          <GraduationCap className="h-3.5 w-3.5" /> Propozycja wpisu FAQ (edytuj jeśli trzeba)
+          <GraduationCap className="h-3.5 w-3.5" /> Propozycja wpisu FAQ {canEdit ? '(edytuj jeśli trzeba)' : ''}
         </div>
         <Input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Pytanie kanoniczne…"
           className="text-sm"
+          disabled={!canEdit}
         />
         <Textarea
           value={answer}
@@ -86,23 +87,31 @@ export function CandidateCard({ c }: { c: FaqCandidate }) {
           rows={4}
           placeholder="Odpowiedź / procedura…"
           className="text-sm"
+          disabled={!canEdit}
         />
         <Input
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder="Kategoria (np. reklamacje, dostawa, b2b)…"
           className="text-sm w-64"
+          disabled={!canEdit}
         />
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-1">
-        <Button variant="outline" onClick={onReject} disabled={pending} className="gap-1.5 text-slate-600">
-          <X className="h-4 w-4" /> Odrzuć
-        </Button>
-        <Button onClick={onApprove} disabled={pending || !question.trim() || !answer.trim()} className="gap-1.5">
-          <Check className="h-4 w-4" />
-          {pending ? 'Dodaję…' : 'Dodaj do FAQ'}
-        </Button>
+        {canEdit ? (
+          <>
+            <Button variant="outline" onClick={onReject} disabled={pending} className="gap-1.5 text-slate-600">
+              <X className="h-4 w-4" /> Odrzuć
+            </Button>
+            <Button onClick={onApprove} disabled={pending || !question.trim() || !answer.trim()} className="gap-1.5">
+              <Check className="h-4 w-4" />
+              {pending ? 'Dodaję…' : 'Dodaj do FAQ'}
+            </Button>
+          </>
+        ) : (
+          <span className="text-xs text-slate-400">tylko podgląd</span>
+        )}
       </div>
     </div>
   )

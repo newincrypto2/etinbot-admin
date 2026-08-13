@@ -6,9 +6,11 @@ import { getVertical } from '@/queries/client'
 import { createFaq } from '@/actions/faq'
 import { FaqForm } from '../_components/FaqForm'
 import { activeClientSlug } from '@/lib/tenant'
+import { requireRole } from '@/lib/auth-helpers'
 
 
 export default async function NewFaqPage() {
+  await requireRole('EDITOR')
   const [categories, vertical] = await Promise.all([
     listCategories((await activeClientSlug())),
     getVertical((await activeClientSlug())),

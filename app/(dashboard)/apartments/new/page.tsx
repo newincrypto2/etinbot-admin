@@ -1,11 +1,19 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { createApartment } from '@/actions/apartments'
 import { getBuildings } from '@/queries/buildings'
 import { ApartmentForm } from '../_components/ApartmentForm'
+import { requireRole } from '@/lib/auth-helpers'
+import { getVertical } from '@/queries/client'
+import { activeClientSlug } from '@/lib/tenant'
 
 export default async function NewApartmentPage() {
+  await requireRole('EDITOR')
+  const vertical = await getVertical((await activeClientSlug()))
+  if (vertical !== 'rental') redirect('/')
+
   const buildings = await getBuildings()
   return (
     <div className="max-w-3xl space-y-6">

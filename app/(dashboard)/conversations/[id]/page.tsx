@@ -48,7 +48,13 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
       <header className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {conv.guestName ?? conv.guestPhone ?? conv.guestEmail ?? (conv.channel === 'webchat' ? 'Gość (webchat)' : conv.channel === 'messenger' ? 'Gość (Messenger)' : conv.threadId)}
+            {conv.guestName ?? conv.guestPhone ?? conv.guestEmail ?? (
+              conv.channel === 'webchat'
+                ? (conv.vertical === 'ecommerce' ? 'Klient (webchat)' : 'Gość (webchat)')
+                : conv.channel === 'messenger'
+                  ? (conv.vertical === 'ecommerce' ? 'Klient (Messenger)' : 'Gość (Messenger)')
+                  : conv.threadId
+            )}
           </h1>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <Badge variant="secondary">{CHANNEL_LABEL[conv.channel] ?? conv.channel}</Badge>
@@ -163,7 +169,9 @@ export default async function ConversationDetailPage(props: { params: Promise<{ 
               // Wiadomość człowieka z panelu (takeover) — odróżnij od bota
               const rolemeta = m.author
                 ? { label: `Obsługa · ${m.author}`, color: 'bg-emerald-50 border-emerald-200 text-emerald-900' }
-                : ROLE_LABEL[m.role] ?? ROLE_LABEL.system
+                : m.role === 'user'
+                  ? { ...ROLE_LABEL.user, label: conv.vertical === 'ecommerce' ? 'Klient' : 'Gość' }
+                  : ROLE_LABEL[m.role] ?? ROLE_LABEL.system
               // Prisma driver adapter zwraca jsonb jako STRING — bez parse tool calls
               // nigdy się nie renderowały (silent fail)
               const rawTc = typeof m.toolCalls === 'string'

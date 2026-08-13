@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Megaphone, Plus } from 'lucide-react'
 
-import { requireAuth } from '@/lib/auth-helpers'
+import { requireAuth, getCurrentRole, hasRole } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { PromoRowActions } from './_components/PromoRowActions'
@@ -10,6 +10,8 @@ import { activeClientSlug } from '@/lib/tenant'
 
 export default async function PromoPage() {
   await requireAuth()
+  const role = await getCurrentRole()
+  const canEdit = hasRole(role, 'EDITOR')
   const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 
@@ -32,9 +34,11 @@ export default async function PromoPage() {
             kod rabatowy, harmonogram i targeting stron. Przy kilku aktywnych wygrywa wyższy priorytet.
           </p>
         </div>
-        <Link href="/promo/new" className="h-9 px-3 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 inline-flex items-center gap-1.5">
-          <Plus className="h-4 w-4" /> Nowa kampania
-        </Link>
+        {canEdit && (
+          <Link href="/promo/new" className="h-9 px-3 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 inline-flex items-center gap-1.5">
+            <Plus className="h-4 w-4" /> Nowa kampania
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
@@ -112,7 +116,11 @@ export default async function PromoPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end">
-                      <PromoRowActions id={b.id} enabled={b.enabled} />
+                      {canEdit ? (
+                        <PromoRowActions id={b.id} enabled={b.enabled} />
+                      ) : (
+                        <span className="text-xs text-slate-400">tylko podgląd</span>
+                      )}
                     </div>
                   </td>
                 </tr>

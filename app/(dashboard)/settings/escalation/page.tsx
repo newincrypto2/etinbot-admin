@@ -33,7 +33,7 @@ export default async function EscalationSettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">Eskalacja</h1>
         <p className="text-sm text-slate-600 mt-1">
-          Powiadomienia SMS dla obsługi + numery, które bot pokazuje gościowi.
+          Powiadomienia SMS dla obsługi + numery, które bot pokazuje {vertical === 'ecommerce' ? 'klientowi' : 'gościowi'}.
         </p>
       </header>
 
@@ -59,16 +59,19 @@ export default async function EscalationSettingsPage() {
         />
       </section>
 
-      {/* SEKCJA 2: Numery pokazywane gościowi (display only) */}
+      {/* SEKCJA 2: Numery pokazywane gościowi/klientowi (display only) */}
       <section className="rounded-lg border border-slate-200 bg-white p-6 space-y-1">
-        <h2 className="font-semibold text-slate-900">Numery dla gościa</h2>
+        <h2 className="font-semibold text-slate-900">
+          Numery dla {vertical === 'ecommerce' ? 'klienta' : 'gościa'}
+        </h2>
         <p className="text-xs text-slate-500 mb-4">
-          To są numery, które bot <strong>cytuje gościowi</strong> w odpowiedzi po eskalacji
+          To są numery, które bot <strong>cytuje {vertical === 'ecommerce' ? 'klientowi' : 'gościowi'}</strong> w odpowiedzi po eskalacji
           (np. „Sprawa przekazana, oddzwonią lub zadzwoń sam: +48..."). Nie chodzi tu o to,
           kto dostaje SMS — tym zajmuje się sekcja wyżej.
         </p>
         <EscalationForm
           action={updateEscalation}
+          vertical={vertical}
           initial={{
             escalationPhoneOffice: settings.escalationPhoneOffice ?? '',
             escalationPhoneSecurity: settings.escalationPhoneSecurity ?? '',

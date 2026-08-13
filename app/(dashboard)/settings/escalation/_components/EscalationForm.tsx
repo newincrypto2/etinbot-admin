@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { ActionResult } from '@/actions/client'
 
-export function EscalationForm({ action, initial }: {
+export function EscalationForm({ action, initial, vertical = 'rental' }: {
   action: (state: ActionResult, fd: FormData) => Promise<ActionResult>
   initial: { escalationPhoneOffice: string; escalationPhoneSecurity: string; escalationEmail: string }
+  vertical?: 'rental' | 'ecommerce'
 }) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { ok: false })
+  const isEcom = vertical === 'ecommerce'
 
   return (
     <form action={formAction} className="space-y-5">
@@ -26,24 +28,30 @@ export function EscalationForm({ action, initial }: {
         <Label className="text-sm font-medium block mb-1.5">Numer biura (godz. 8-16)</Label>
         <Input name="escalationPhoneOffice" defaultValue={initial.escalationPhoneOffice} placeholder="+48918171617" />
         <p className="text-xs text-slate-500 mt-1">
-          Bot proponuje gościowi ten numer dla spraw normalnych (modyfikacje, faktury, info).
+          {isEcom
+            ? 'Bot proponuje klientowi ten numer dla spraw normalnych (zmiana zamówienia, faktury, info).'
+            : 'Bot proponuje gościowi ten numer dla spraw normalnych (modyfikacje, faktury, info).'}
         </p>
         {state.errors?.escalationPhoneOffice && <p className="text-xs text-red-600 mt-1">{state.errors.escalationPhoneOffice}</p>}
       </div>
 
       <div>
-        <Label className="text-sm font-medium block mb-1.5">Numer alarmowy 24/7</Label>
+        <Label className="text-sm font-medium block mb-1.5">{isEcom ? 'Numer alarmowy' : 'Numer alarmowy 24/7'}</Label>
         <Input name="escalationPhoneSecurity" defaultValue={initial.escalationPhoneSecurity} placeholder="+48780060674" />
         <p className="text-xs text-slate-500 mt-1">
-          Bot eskaluje TU sprawy pilne: awarie, brak wejścia po godzinach, sytuacje krytyczne.
+          {isEcom
+            ? 'Bot eskaluje TU sprawy pilne poza godzinami biura.'
+            : 'Bot eskaluje TU sprawy pilne: awarie, brak wejścia po godzinach, sytuacje krytyczne.'}
         </p>
       </div>
 
       <div>
         <Label className="text-sm font-medium block mb-1.5">Email kontaktowy</Label>
-        <Input name="escalationEmail" type="email" defaultValue={initial.escalationEmail} placeholder="biuro@matysproperty.pl" />
+        <Input name="escalationEmail" type="email" defaultValue={initial.escalationEmail} placeholder="biuro@twojafirma.pl" />
         <p className="text-xs text-slate-500 mt-1">
-          Email do podania w wiadomościach dla gościa (poza Booking.com, gdzie blokują adresy).
+          {isEcom
+            ? 'Email do podania w wiadomościach dla klienta.'
+            : 'Email do podania w wiadomościach dla gościa (poza Booking.com, gdzie blokują adresy).'}
         </p>
         {state.errors?.escalationEmail && <p className="text-xs text-red-600 mt-1">{state.errors.escalationEmail}</p>}
       </div>
