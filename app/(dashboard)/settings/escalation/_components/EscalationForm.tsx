@@ -26,18 +26,19 @@ export function EscalationForm({ action, initial, vertical = 'rental' }: {
 
       <div>
         <Label className="text-sm font-medium block mb-1.5">Numer biura (godz. 8-16)</Label>
-        <Input name="escalationPhoneOffice" defaultValue={initial.escalationPhoneOffice} placeholder="+48918171617" />
+        <Input name="escalationPhoneOffice" defaultValue={initial.escalationPhoneOffice} placeholder="+48 600 100 200" />
         <p className="text-xs text-slate-500 mt-1">
           {isEcom
             ? 'Bot proponuje klientowi ten numer dla spraw normalnych (zmiana zamówienia, faktury, info).'
             : 'Bot proponuje gościowi ten numer dla spraw normalnych (modyfikacje, faktury, info).'}
+          {' '}Gdy lista odbiorców SMS (sekcja wyżej) jest pusta, na ten numer trafia też awaryjny SMS o eskalacji.
         </p>
         {state.errors?.escalationPhoneOffice && <p className="text-xs text-red-600 mt-1">{state.errors.escalationPhoneOffice}</p>}
       </div>
 
       <div>
         <Label className="text-sm font-medium block mb-1.5">{isEcom ? 'Numer alarmowy' : 'Numer alarmowy 24/7'}</Label>
-        <Input name="escalationPhoneSecurity" defaultValue={initial.escalationPhoneSecurity} placeholder="+48780060674" />
+        <Input name="escalationPhoneSecurity" defaultValue={initial.escalationPhoneSecurity} placeholder="+48 600 200 300" />
         <p className="text-xs text-slate-500 mt-1">
           {isEcom
             ? 'Bot eskaluje TU sprawy pilne poza godzinami biura.'

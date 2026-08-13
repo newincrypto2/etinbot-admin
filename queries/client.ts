@@ -1,6 +1,7 @@
 import { cache } from 'react'
 
 import { prisma } from '@/lib/prisma'
+import { coerceObj } from '@/queries/clients'
 
 export type Vertical = 'rental' | 'ecommerce'
 
@@ -19,6 +20,9 @@ export type ClientSettings = {
   botName: string | null
   botPersona: string | null
   primaryLanguage: string
+  /** Numery/email cytowane klientowi/gościowi przez bota — czytane z `config.escalation`
+   *  (app/bot/prompts/common.py::_placeholders_from_config), NIE z kolumn
+   *  escalation_phone_office/_security/escalation_email (martwe, audyt 08.2026). */
   escalationPhoneOffice: string | null
   escalationPhoneSecurity: string | null
   escalationEmail: string | null
@@ -27,6 +31,7 @@ export type ClientSettings = {
   idobookingLogin: string | null
   hasIdobookingApiKey: boolean    // tylko flag — nie zwracamy sekretu
   hasElevenlabsAgent: boolean
+  elevenlabsAgentId: string | null
   plan: string
   updatedAt: Date
 }
@@ -43,9 +48,7 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
       bot_name: true,
       bot_persona: true,
       primary_language: true,
-      escalation_phone_office: true,
-      escalation_phone_security: true,
-      escalation_email: true,
+      config: true,
       office_hours: true,
       idobooking_tenant: true,
       idobooking_login: true,
@@ -55,6 +58,8 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
     },
   })
   if (!c) return null
+  const escalation = coerceObj(coerceObj(c.config).escalation)
+  const strOrNull = (v: unknown) => (typeof v === 'string' && v ? v : null)
   return {
     id: c.id,
     slug: c.slug,
@@ -64,14 +69,15 @@ export async function getClientSettings(slug: string): Promise<ClientSettings | 
     botName: c.bot_name,
     botPersona: c.bot_persona,
     primaryLanguage: c.primary_language,
-    escalationPhoneOffice: c.escalation_phone_office,
-    escalationPhoneSecurity: c.escalation_phone_security,
-    escalationEmail: c.escalation_email,
+    escalationPhoneOffice: strOrNull(escalation.phone),
+    escalationPhoneSecurity: strOrNull(escalation.security_phone),
+    escalationEmail: strOrNull(escalation.email),
     officeHours: (c.office_hours as any) ?? null,
     idobookingTenant: c.idobooking_tenant,
     idobookingLogin: c.idobooking_login,
     hasIdobookingApiKey: Boolean(c.idobooking_api_key_enc),
     hasElevenlabsAgent: Boolean(c.elevenlabs_agent_id),
+    elevenlabsAgentId: c.elevenlabs_agent_id,
     updatedAt: c.updated_at,
   }
 }
@@ -127,19 +133,69 @@ export async function listIdobookingCreds(clientSlug: string): Promise<IdoBookin
 // Klucze trzymane w clients.config.integrations JSONB — backend EtinBOT czyta
 // je stamtąd (z fallbackiem na env). Sekretów nie zwracamy, tylko flagę set/not.
 
+/** Skąd naprawdę bierze się integracja: z panelu (config) czy z env Coolify backendu.
+ *  `null` = ani panel, ani env — realnie nieskonfigurowana. */
+export type IntegrationSource = 'panel' | 'env' | null
+
+export type MessengerPageSummary = {
+  pageId: string
+  brandContext: string | null
+  /** Zamaskowany token (długość, nie wartość) — nigdy plaintext w panelu tenanta. */
+  tokenMasked: string | null
+}
+
 export type EcommerceIntegrations = {
   baselinkerTokenSet: boolean
+  baselinkerSource: IntegrationSource
   wcUrl: string | null
   wcKeySet: boolean
   wcSecretSet: boolean
+  wcSource: IntegrationSource
   twilioSmsNumber: string | null
+  twilioSource: IntegrationSource
   messengerPageId: string | null
   messengerTokenSet: boolean
   messengerAppSecretSet: boolean
+  messengerSource: IntegrationSource
+  /** Realne strony FB spięte z tenantem (multi-page — tak działa produkcja).
+   *  Puste = legacy pojedyncza strona (messengerPageId/*) albo brak. */
+  messengerPages: MessengerPageSummary[]
+  emailConfigured: boolean
+  emailSource: IntegrationSource
+  emailMailboxCount: number
   lastOrderSyncAt: Date | null
   lastProductSyncAt: Date | null
   ordersCount: number
   productsCount: number
+}
+
+/** Maska sekretu bez ekspozycji wartości — spójna z backendowym `_mask_secrets`
+ *  (app/api/admin.py), ale liczona lokalnie (bez round-tripu do backendu tylko
+ *  po to, żeby zamaskować długość stringa, który i tak już mamy przez Prisma). */
+function maskSecretLen(v: unknown): string | null {
+  if (typeof v !== 'string' || !v) return null
+  const raw = v.startsWith('enc:v1:') ? v.slice('enc:v1:'.length) : v
+  return `***(${raw.length})`
+}
+
+/** GET /api/admin/tenant-health — tylko dla `integration_sources` (panel/env),
+ *  jedyna rzecz której panel NIE potrafi wyliczyć sam (env żyje na backendzie).
+ *  Fail-safe: backend niedostępny → null, wołający degraduje do lokalnego configu. */
+async function fetchIntegrationSources(slug: string): Promise<Record<string, IntegrationSource> | null> {
+  const base = process.env.BOT_API_URL
+  const key = process.env.BOT_API_KEY
+  if (!base || !key) return null
+  try {
+    const res = await fetch(
+      `${base.replace(/\/$/, '')}/api/admin/tenant-health?slug=${encodeURIComponent(slug)}`,
+      { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' },
+    )
+    if (!res.ok) return null
+    const data = (await res.json()) as { integration_sources?: Record<string, IntegrationSource> }
+    return data.integration_sources ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function getEcommerceIntegrations(slug: string): Promise<EcommerceIntegrations | null> {
@@ -151,22 +207,46 @@ export async function getEcommerceIntegrations(slug: string): Promise<EcommerceI
     ? (() => { try { return JSON.parse(c.config as string) } catch { return {} } })()
     : (c.config ?? {})
   const integ = (((rawCfg as any)?.integrations) ?? {}) as Record<string, unknown>
-  const [lastOrder, lastProduct, ordersCount, productsCount] = await Promise.all([
+  const [lastOrder, lastProduct, ordersCount, productsCount, sources] = await Promise.all([
     prisma.orders_cache.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),
     prisma.products.aggregate({ where: { client_id: c.id }, _max: { last_synced_at: true } }),
     prisma.orders_cache.count({ where: { client_id: c.id } }),
     prisma.products.count({ where: { client_id: c.id } }),
+    fetchIntegrationSources(slug),
   ])
   const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+  // Fallback gdy backend niedostępny: znamy panel-config bezpośrednio (Prisma),
+  // 'env' bez backendu wykryć się nie da — ale przynajmniej 'panel' nie znika.
+  const srcOf = (key: string, panelPresent: boolean): IntegrationSource =>
+    sources?.[key] ?? (panelPresent ? 'panel' : null)
+
+  const rawPages = Array.isArray(integ.messenger_pages) ? integ.messenger_pages : []
+  const messengerPages: MessengerPageSummary[] = rawPages
+    .filter((p): p is Record<string, unknown> => p != null && typeof p === 'object')
+    .map((p) => ({
+      pageId: str(p.page_id) ?? '',
+      brandContext: str(p.brand_context),
+      tokenMasked: maskSecretLen(p.page_token),
+    }))
+  const mailboxCount = Array.isArray(integ.email_mailboxes) ? integ.email_mailboxes.length : 0
+
   return {
     baselinkerTokenSet: Boolean(integ.baselinker_token),
+    baselinkerSource: srcOf('baselinker', Boolean(integ.baselinker_token)),
     wcUrl: str(integ.wc_url),
     wcKeySet: Boolean(integ.wc_consumer_key),
     wcSecretSet: Boolean(integ.wc_consumer_secret),
+    wcSource: srcOf('woocommerce', Boolean(integ.wc_url)),
     twilioSmsNumber: str(integ.twilio_sms_number),
+    twilioSource: srcOf('twilio_sms', Boolean(integ.twilio_sms_number)),
     messengerPageId: str(integ.messenger_page_id),
     messengerTokenSet: Boolean(integ.messenger_page_token),
     messengerAppSecretSet: Boolean(integ.messenger_app_secret),
+    messengerSource: srcOf('messenger', messengerPages.length > 0 || Boolean(integ.messenger_page_id)),
+    messengerPages,
+    emailConfigured: mailboxCount > 0,
+    emailSource: srcOf('email', mailboxCount > 0),
+    emailMailboxCount: mailboxCount,
     lastOrderSyncAt: lastOrder._max.last_synced_at,
     lastProductSyncAt: lastProduct._max.last_synced_at,
     ordersCount,

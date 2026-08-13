@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
+import { coerceObj } from '@/queries/clients'
+import { saveEscalationConfigPatch } from '@/lib/escalation-config'
 
 const BrandSchema = z.object({
   botName: z.string().min(1).max(50),
@@ -17,13 +19,6 @@ const EscalationSchema = z.object({
   escalationPhoneOffice: z.string().max(30).optional().nullable(),
   escalationPhoneSecurity: z.string().max(30).optional().nullable(),
   escalationEmail: z.string().email().optional().nullable().or(z.literal('')),
-})
-
-const IntegrationsSchema = z.object({
-  idobookingTenant: z.string().max(50).optional().nullable(),
-  idobookingLogin: z.string().max(100).optional().nullable(),
-  idobookingApiKey: z.string().optional().nullable(),    // empty = no change
-  elevenlabsAgentId: z.string().max(100).optional().nullable(),
 })
 
 const EcommerceIntegrationsSchema = z.object({
@@ -93,6 +88,12 @@ export async function updateBrand(_prev: ActionResult, fd: FormData): Promise<Ac
 }
 
 // ─── Escalation ────────────────────────────────────────────────────────────
+// Self-service tenanta (/settings/escalation). Zapisuje do `config.escalation`
+// (JSONB, przez backend `/api/admin/set-config`) — TO jest źródło, które bot
+// faktycznie czyta (app/bot/prompts/common.py) i które służy jako fallback SMS
+// gdy tabela escalation_recipients jest pusta (app/ops/escalation_sms.py).
+// Kolumny `clients.escalation_phone_office/_security/escalation_email` są martwe
+// (nic ich nie czyta) — zostają w schemacie, ale ten formularz już ich nie rusza.
 
 export async function updateEscalation(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   const parsed = EscalationSchema.safeParse({
@@ -108,56 +109,24 @@ export async function updateEscalation(_prev: ActionResult, fd: FormData): Promi
   const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const slug = await activeClientSlug()
-  const id = await getClientIdBySlug(slug)
-  await prisma.clients.update({
-    where: { id },
-    data: {
-      escalation_phone_office: parsed.data.escalationPhoneOffice,
-      escalation_phone_security: parsed.data.escalationPhoneSecurity,
-      escalation_email: parsed.data.escalationEmail === '' ? null : parsed.data.escalationEmail,
-    },
+  const r = await saveEscalationConfigPatch(slug, {
+    phone: parsed.data.escalationPhoneOffice ?? '',
+    security_phone: parsed.data.escalationPhoneSecurity ?? '',
+    email: parsed.data.escalationEmail ?? '',
   })
-  revalidatePath('/settings')
-  return { ok: true, message: 'Zapisano' }
-}
-
-// ─── Integrations ──────────────────────────────────────────────────────────
-
-export async function updateIntegrations(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const parsed = IntegrationsSchema.safeParse({
-    idobookingTenant: parseStr(fd, 'idobookingTenant'),
-    idobookingLogin: parseStr(fd, 'idobookingLogin'),
-    idobookingApiKey: parseStr(fd, 'idobookingApiKey'),
-    elevenlabsAgentId: parseStr(fd, 'elevenlabsAgentId'),
-  })
-  if (!parsed.success) {
-    return { ok: false, message: 'Błędy walidacji' }
-  }
-  const guard = await assertPermissionOrFail('settings.manage')
-  if (!guard.ok) return { ok: false, message: guard.message }
-
-  const slug = await activeClientSlug()
-  const id = await getClientIdBySlug(slug)
-
-  // TODO Sprint 2: szyfrowanie API key (pgcrypto AES-256). Na razie plaintext.
-  const updateData: any = {
-    idobooking_tenant: parsed.data.idobookingTenant,
-    idobooking_login: parsed.data.idobookingLogin,
-    elevenlabs_agent_id: parsed.data.elevenlabsAgentId,
-  }
-  // Klucz API: jeśli pusty → nie zmieniamy. Jeśli wpisany → zapisujemy.
-  if (parsed.data.idobookingApiKey) {
-    updateData.idobooking_api_key_enc = parsed.data.idobookingApiKey
-  }
-
-  await prisma.clients.update({ where: { id }, data: updateData })
+  if (!r.ok) return { ok: false, message: r.message }
+  revalidatePath('/settings/escalation')
   revalidatePath('/settings')
   return { ok: true, message: 'Zapisano' }
 }
 
 // ─── Ecommerce integrations (BaseLinker + WooCommerce → config.integrations) ─
 // Backend EtinBOT czyta te klucze z clients.config.integrations JSONB (tool_registry.py).
-// Sekrety (token, consumer_key/secret): puste pole = nie zmieniaj. wc_url można wyczyścić.
+// Sekrety (token, consumer_key/secret): puste pole = nie zmieniaj (jak dotąd).
+// Niesekrety (wc_url, twilio_sms_number, messenger_page_id): puste pole NIE kasuje
+// istniejącej wartości — dopiero świadomy checkbox "Wyczyść" (audyt 08.2026: pre-fill
+// input może się nie wgrać przy regresji/race, cichy wipe działającej integracji
+// jest gorszy niż brak zmiany).
 
 export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   const guard = await assertPermissionOrFail('settings.manage')
@@ -181,6 +150,11 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
 
   const slug = await activeClientSlug()
 
+  // Stan przed zapisem — do anty-wipe porównania (puste pole vs istniejąca wartość).
+  const clientRow = await prisma.clients.findUnique({ where: { slug }, select: { config: true } })
+  if (!clientRow) return { ok: false, message: `Nie znaleziono klienta ${slug}.` }
+  const currentIntegrations = coerceObj(coerceObj(clientRow.config).integrations)
+
   // S3: zapis przez backend /api/admin/set-integration — sekrety szyfrowane at-rest
   // (panel nie dotyka configu sekretów przez Prisma).
   const base = process.env.BOT_API_URL
@@ -195,11 +169,21 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
     })
     if (!res.ok) throw new Error(`${k}: HTTP ${res.status}`)
   }
+  // Pole niesekretne + checkbox "Wyczyść": puste+brak-w-DB = no-op (nic nie wołamy);
+  // puste+jest-w-DB+bez-checkboxa = no-op (ignorujemy cichy wipe, zostawiamy wartość);
+  // puste+jest-w-DB+checkbox = kasujemy; podane = zawsze zapisujemy.
+  const applyClearable = async (k: string, incoming: string | null, clearFlag: boolean) => {
+    if (incoming) {
+      await setIntegration(k, incoming)
+      return
+    }
+    const hasCurrent = typeof currentIntegrations[k] === 'string' && currentIntegrations[k] !== ''
+    if (hasCurrent && clearFlag) await setIntegration(k, null)
+  }
   try {
-    // niesekrety — można czyścić (brak value = usunięcie klucza)
-    await setIntegration('wc_url', parsed.data.wcUrl || null)
-    await setIntegration('twilio_sms_number', parsed.data.twilioSmsNumber || null)
-    await setIntegration('messenger_page_id', parsed.data.messengerPageId || null)
+    await applyClearable('wc_url', parsed.data.wcUrl ?? null, fd.get('wcUrlClear') === 'on')
+    await applyClearable('twilio_sms_number', parsed.data.twilioSmsNumber ?? null, fd.get('twilioSmsNumberClear') === 'on')
+    await applyClearable('messenger_page_id', parsed.data.messengerPageId ?? null, fd.get('messengerPageIdClear') === 'on')
     // sekrety — tylko gdy podane (puste pole = bez zmian)
     if (parsed.data.baselinkerToken) await setIntegration('baselinker_token', parsed.data.baselinkerToken)
     if (parsed.data.wcConsumerKey) await setIntegration('wc_consumer_key', parsed.data.wcConsumerKey)

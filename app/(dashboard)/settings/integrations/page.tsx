@@ -24,8 +24,11 @@ export default async function IntegrationsSettingsPage() {
   const vertical = await getVertical((await activeClientSlug()))
 
   if (vertical === 'ecommerce') {
-    const ecom = await getEcommerceIntegrations((await activeClientSlug()))
-    if (!ecom) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
+    const [ecom, settings] = await Promise.all([
+      getEcommerceIntegrations((await activeClientSlug())),
+      getClientSettings((await activeClientSlug())),
+    ])
+    if (!ecom || !settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
     return (
       <div className="max-w-3xl space-y-6">
         <Link href="/settings" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
@@ -63,26 +66,40 @@ export default async function IntegrationsSettingsPage() {
         <div className="rounded-lg border border-slate-200 bg-white p-5">
           <EcommerceIntegrationsForm
             action={upsertEcommerceIntegrations}
+            slug={await activeClientSlug()}
             initial={{
               baselinkerTokenSet: ecom.baselinkerTokenSet,
+              baselinkerSource: ecom.baselinkerSource,
               wcUrl: ecom.wcUrl,
               wcKeySet: ecom.wcKeySet,
               wcSecretSet: ecom.wcSecretSet,
+              wcSource: ecom.wcSource,
               twilioSmsNumber: ecom.twilioSmsNumber,
+              twilioSource: ecom.twilioSource,
               messengerPageId: ecom.messengerPageId,
               messengerTokenSet: ecom.messengerTokenSet,
               messengerAppSecretSet: ecom.messengerAppSecretSet,
+              messengerSource: ecom.messengerSource,
+              messengerPages: ecom.messengerPages,
             }}
           />
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="font-semibold text-slate-900 mb-2">ElevenLabs (voice bot)</h2>
-          <p className="text-xs text-slate-500">
-            Identyfikator agenta Conversational AI ustawiasz w env vars Coolify (
-            <code className="font-mono">ELEVENLABS_AGENT_ID</code>). Bot głosowy używa go do routingu webhooka po rozmowie.
+          <h2 className="font-semibold text-slate-900 mb-1">Email (skrzynki)</h2>
+          <p className="text-xs text-slate-500 mb-2">
+            Skrzynki, z których bot czyta i na które odpisuje ({ecom.emailMailboxCount}{' '}
+            {ecom.emailMailboxCount === 1 ? 'skrzynka' : 'skrzynek'}).
           </p>
+          {ecom.emailConfigured ? (
+            <div className="text-xs text-emerald-700">✓ skonfigurowane (panel)</div>
+          ) : (
+            <div className="text-xs text-slate-500">— brak skrzynek.</div>
+          )}
+          <p className="text-xs text-slate-400 mt-2">Dodawanie/edycja skrzynek: Superadmin, karta klienta.</p>
         </div>
+
+        <ElevenlabsStatusCard hasAgent={settings.hasElevenlabsAgent} agentId={settings.elevenlabsAgentId} />
       </div>
     )
   }
@@ -175,17 +192,31 @@ export default async function IntegrationsSettingsPage() {
         })}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="font-semibold text-slate-900 mb-2">ElevenLabs (voice bot)</h2>
-        <p className="text-xs text-slate-500 mb-3">
-          Identyfikator agenta Conversational AI w ElevenLabs. Bot głosowy używa go żeby zawołać <code className="font-mono">/api/kb/search</code>.
-        </p>
-        {settings.hasElevenlabsAgent ? (
-          <div className="text-xs text-emerald-700">✓ podpięty (edycja na razie przez ENV Coolify)</div>
-        ) : (
-          <div className="text-xs text-slate-500">— nie skonfigurowany. Wpisz Agent ID w env vars Coolify gdy ElevenLabs będzie gotowy.</div>
-        )}
-      </div>
+      <ElevenlabsStatusCard hasAgent={settings.hasElevenlabsAgent} agentId={settings.elevenlabsAgentId} />
+    </div>
+  )
+}
+
+/** Stan ElevenLabs (voice bot) — realna kolumna `clients.elevenlabs_agent_id`,
+ * NIE env vars Coolify (poprzedni tekst mylił: sugerował że trzeba grzebać w env,
+ * a to zwykła kolumna DB — audyt 08.2026). Edycja tylko przez Superadmina
+ * (VoicePromptCard, karta klienta) — tu wyłącznie podgląd prawdziwego stanu. */
+function ElevenlabsStatusCard({ hasAgent, agentId }: { hasAgent: boolean; agentId: string | null }) {
+  const masked = agentId && agentId.length > 8 ? `${agentId.slice(0, 4)}…${agentId.slice(-4)}` : agentId
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 className="font-semibold text-slate-900 mb-2">ElevenLabs (voice bot)</h2>
+      <p className="text-xs text-slate-500 mb-3">
+        Identyfikator agenta Conversational AI w ElevenLabs. Bot głosowy używa go żeby zawołać <code className="font-mono">/api/kb/search</code>.
+      </p>
+      {hasAgent ? (
+        <div className="text-xs text-emerald-700">✓ agent podpięty (ID: {masked})</div>
+      ) : (
+        <div className="text-xs text-slate-500">— brak agenta.</div>
+      )}
+      <p className="text-xs text-slate-400 mt-2">
+        Edycja agent_id: Superadmin, karta klienta (Prompt voice).
+      </p>
     </div>
   )
 }

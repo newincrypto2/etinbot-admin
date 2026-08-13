@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertPermissionOrFail, getCurrentPermissions } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
+import { activeClientSlug } from '@/lib/tenant'
 
 // ─── Backend helper ─────────────────────────────────────────────────────────
 
@@ -60,10 +61,26 @@ export async function testIntegration(
   params: Record<string, unknown>,
   slug?: string,
 ): Promise<IntegrationTestResult> {
-  const guard = await assertPermissionOrFail('clients.manage')
-  if (!guard.ok) return { ok: false, error: guard.message }
+  // Dwa konteksty wywołania:
+  //  - SUPERADMIN (clients.manage) — karta dowolnego klienta (/clients/[id]) i wizard
+  //    tworzenia nowego tenanta; `slug` z URL/formularza jest zaufany (SUPERADMIN i tak
+  //    widzi wszystko).
+  //  - OWNER/EDITOR bez clients.manage, ale z settings.manage (self-service integracje,
+  //    /settings/integrations) — mogą testować WYŁĄCZNIE własny aktywny tenant. `slug`
+  //    z wejścia jest tu NIEZAUFANY (mógłby przyjść od klienta) — nadpisujemy go
+  //    tenantem z sesji, żeby nie dało się przetestować (i tym samym odpytać) cudzej
+  //    integracji przez podmianę parametru (anty-IDOR).
+  const perms = await getCurrentPermissions()
+  let effectiveSlug: string | undefined = slug
+  if (perms['clients.manage']) {
+    // ok — dowolny slug
+  } else if (perms['settings.manage']) {
+    effectiveSlug = await activeClientSlug()
+  } else {
+    return { ok: false, error: 'Brak uprawnień (wymagane: clients.manage lub settings.manage)' }
+  }
   const body: Record<string, unknown> = { integration, params: params ?? {} }
-  if (slug) body.slug = slug
+  if (effectiveSlug) body.slug = effectiveSlug
   const r = await callBackend('/api/admin/test-integration', body)
   if (!r.ok && r.status === 0) return { ok: false, error: r.text }
   if (!r.ok) return { ok: false, error: (r.data.error as string) || (r.data.detail as string) || `HTTP ${r.status}` }

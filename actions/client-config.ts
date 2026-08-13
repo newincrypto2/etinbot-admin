@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { coerceObj } from '@/queries/clients'
+import { saveEscalationConfigPatch } from '@/lib/escalation-config'
 
 export type ActionResult = { ok: boolean; message: string }
 
@@ -93,13 +94,12 @@ export async function updateEscalation(slug: string, fd: FormData): Promise<Acti
   if (!VOICE_MODES.has(voiceMode)) {
     return { ok: false, message: 'Nieprawidłowy tryb reakcji na eskalację (voice).' }
   }
-  return saveTopLevel(
-    slug,
-    'escalation',
-    { phone: s(fd, 'phone'), email, voice_mode: voiceMode },
-    'Zapisano dane eskalacji.',
-    `/clients/${slug}`,
-  )
+  const guard = await assertPermissionOrFail('clients.manage')
+  if (!guard.ok) return { ok: false, message: guard.message }
+  const r = await saveEscalationConfigPatch(slug, { phone: s(fd, 'phone'), email, voice_mode: voiceMode })
+  if (!r.ok) return r
+  revalidatePath(`/clients/${slug}`)
+  return r
 }
 
 export async function updatePayment(slug: string, fd: FormData): Promise<ActionResult> {
