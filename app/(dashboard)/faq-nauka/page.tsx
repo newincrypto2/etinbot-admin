@@ -3,15 +3,15 @@ import { GraduationCap } from 'lucide-react'
 import { listFaqCandidates } from '@/queries/email'
 import { CandidateCard } from './_components/CandidateCard'
 import { activeClientSlug } from '@/lib/tenant'
-import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 
 
 export default async function FaqNaukaPage() {
-  const [candidates, role] = await Promise.all([
+  const [candidates, permissions] = await Promise.all([
     listFaqCandidates({ clientSlug: (await activeClientSlug()), status: 'pending' }),
-    getCurrentRole(),
+    getCurrentPermissions(),
   ])
-  const canEdit = hasRole(role, 'EDITOR')
+  const canEdit = permissions['faq.review_candidates']
 
   return (
     <div className="max-w-4xl space-y-6">

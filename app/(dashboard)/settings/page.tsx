@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { Users, Key, MessageSquareText, Phone } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getClientSettings, getEcommerceIntegrations } from '@/queries/client'
 import { activeClientSlug } from '@/lib/tenant'
 
 
 export default async function SettingsPage() {
-  await requireRole('OWNER')
+  await requirePermission('settings.manage')
   const settings = await getClientSettings((await activeClientSlug()))
 
   if (!settings) {

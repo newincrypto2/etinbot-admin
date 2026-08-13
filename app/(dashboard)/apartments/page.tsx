@@ -4,7 +4,7 @@ import { Plus, Wifi, KeyRound, Car } from 'lucide-react'
 
 import { listApartments, listBuildings } from '@/queries/apartments'
 import { buttonVariants } from '@/lib/button-variants'
-import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { ApartmentRowActions } from './_components/ApartmentRowActions'
 import { SyncButton } from './_components/SyncButton'
 import { activeClientSlug } from '@/lib/tenant'
@@ -28,12 +28,12 @@ export default async function ApartmentsPage(props: { searchParams: SearchParams
   const building = params.building ?? 'all'
   const search = params.q ?? ''
 
-  const [rows, buildings, role] = await Promise.all([
+  const [rows, buildings, permissions] = await Promise.all([
     listApartments({ clientSlug: (await activeClientSlug()), building, search }),
     listBuildings((await activeClientSlug())),
-    getCurrentRole(),
+    getCurrentPermissions(),
   ])
-  const canEdit = hasRole(role, 'EDITOR')
+  const canEdit = permissions['apartments.manage']
 
   return (
     <div className="space-y-6">

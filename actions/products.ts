@@ -1,6 +1,6 @@
 'use server'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { activeClientSlug } from '@/lib/tenant'
 
 export type SyncResult = { ok: boolean; message: string }
@@ -8,7 +8,7 @@ export type SyncResult = { ok: boolean; message: string }
 /** Ręczne uruchomienie syncu produktów — woła backend EtinBOT (POST /api/admin/sync-products).
  *  Sync leci w tle po stronie backendu; tu tylko go odpalamy. */
 export async function triggerProductSync(): Promise<SyncResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('products.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const base = process.env.BOT_API_URL

@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Search, CalendarCheck } from 'lucide-react'
 
-import { requireAuth, getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { requireAuth } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { activeClientSlug } from '@/lib/tenant'
 import { getVertical } from '@/queries/client'
 import { listReservations } from '@/queries/reservations'
@@ -31,8 +32,11 @@ export default async function ReservationsPage(props: { searchParams: SearchPara
   const q = (params.q ?? '').trim()
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
-  const [role, slug] = await Promise.all([getCurrentRole(), activeClientSlug()])
-  const canEdit = hasRole(role, 'EDITOR')
+  const [permissions, slug] = await Promise.all([getCurrentPermissions(), activeClientSlug()])
+  // "Sync rezerwacji" woła syncReservationsFromIdoBooking (actions/apartments.ts,
+  // guard apartments.manage) — canEdit musi odzwierciedlać TO uprawnienie, nie
+  // osobny (nieistniejący) reservations.manage.
+  const canEdit = permissions['apartments.manage']
 
   const { rows, total, pageSize } = await listReservations({ clientSlug: slug, status, q, page })
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

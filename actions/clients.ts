@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 
 // ─── Backend helper ─────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ async function callBackend(path: string, body: Record<string, unknown>): Promise
 export async function checkSlugAvailable(
   slug: string,
 ): Promise<{ ok: boolean; available: boolean; message?: string }> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, available: false, message: guard.message }
   const s = (slug || '').trim().toLowerCase()
   if (!/^[a-z0-9-]{2,50}$/.test(s)) {
@@ -60,7 +60,7 @@ export async function testIntegration(
   params: Record<string, unknown>,
   slug?: string,
 ): Promise<IntegrationTestResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, error: guard.message }
   const body: Record<string, unknown> = { integration, params: params ?? {} }
   if (slug) body.slug = slug
@@ -80,7 +80,7 @@ export async function setClientActive(
   slug: string,
   active: boolean,
 ): Promise<{ ok: boolean; message: string }> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/set-active', { slug, active })
   if (!r.ok) return { ok: false, message: `Nie udało się zmienić statusu (${r.status}). ${r.text.slice(0, 140)}` }
@@ -113,7 +113,7 @@ export async function sandboxChat(
   history: SandboxMessage[],
   identity?: { email?: string; phone?: string },
 ): Promise<SandboxResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   if (!message.trim()) return { ok: false, message: 'Wpisz wiadomość.' }
   const r = await callBackend('/api/admin/sandbox-chat', {
@@ -143,7 +143,7 @@ export async function savePromptExtra(
   slug: string,
   text: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/set-config', {
     slug,
@@ -287,7 +287,7 @@ function clean(v: string | undefined | null): string | undefined {
 }
 
 export async function createTenant(raw: WizardInput): Promise<CreateTenantResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = WizardSchema.safeParse(raw)
@@ -574,7 +574,7 @@ export type AllegroStartResult =
   | { ok: false; message: string }
 
 export async function allegroDeviceStart(slug: string): Promise<AllegroStartResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/allegro-device-start', { slug })
   if (!r.ok) {
@@ -600,7 +600,7 @@ export async function allegroDeviceStart(slug: string): Promise<AllegroStartResu
 export type AllegroPollResult = { ok: boolean; status: 'connected' | 'pending' | 'error'; message?: string }
 
 export async function allegroDevicePoll(slug: string, deviceCode: string): Promise<AllegroPollResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, status: 'error', message: guard.message }
   if (!deviceCode) return { ok: false, status: 'error', message: 'Brak device_code — rozpocznij autoryzację ponownie.' }
   const r = await callBackend('/api/admin/allegro-device-poll', { slug, device_code: deviceCode })

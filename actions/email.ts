@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
@@ -102,7 +102,7 @@ async function callBackend(
 export async function readFilteredMail(
   inboundId: string,
 ): Promise<{ ok: boolean; subject?: string; from?: string; body?: string; message?: string }> {
-  const guard = await assertRoleOrFail('VIEWER')
+  const guard = await assertPermissionOrFail('mail.view')
   if (!guard.ok) return { ok: false, message: guard.message }
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY
@@ -131,7 +131,7 @@ export async function sendDraft(
   bodyText?: string,
   bodyRich?: string,
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const signer = await currentUserName()
@@ -160,7 +160,7 @@ export async function wrapQuickReply(
   conversationId: string,
   coreText: string,
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   if (!coreText.trim()) return { ok: false, message: 'Wpisz rdzeń odpowiedzi.' }
 
@@ -184,7 +184,7 @@ export async function discardDraft(
   draftId: string,
   conversationId: string,
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const r = await callBackend('/api/email/discard', { draft_id: draftId })
@@ -195,7 +195,7 @@ export async function discardDraft(
 
 /** Upload załącznika do draftu (multipart → backend). */
 export async function uploadAttachment(formData: FormData): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY
@@ -233,7 +233,7 @@ export async function removeAttachment(
   attachmentId: string,
   conversationId: string,
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/email/attachment/remove', { attachment_id: attachmentId })
   if (!r.ok) return { ok: false, message: `Nie udało się usunąć (${r.status}).` }
@@ -248,7 +248,7 @@ async function addTag(id: string, tag: string): Promise<string[]> {
 
 /** Zamknij / otwórz ponownie wątek mailowy. */
 export async function setEmailThreadClosed(id: string, closed: boolean): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   await prisma.conversations.update({
     where: { id },
@@ -261,7 +261,7 @@ export async function setEmailThreadClosed(id: string, closed: boolean): Promise
 
 /** Oznacz wątek jako B2B / hurt (tag). */
 export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   await prisma.conversations.update({ where: { id }, data: { tags: await addTag(id, 'b2b') } })
   revalidatePath(`/poczta/${id}`)
@@ -276,7 +276,7 @@ export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> 
  * 3. usuwa wątek ze skrzynki. Przyszłe maile od nadawcy lecą automatycznie w spam.
  */
 export async function markEmailThreadSpam(id: string): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const conv = await prisma.conversations.findUnique({ where: { id }, select: { client_id: true } })
@@ -329,7 +329,7 @@ export async function markEmailThreadSpam(id: string): Promise<EmailActionResult
 
 /** „NIE spam" — przenosi odfiltrowaną wiadomość do Poczty (tworzy wątek + draft). */
 export async function restoreFromSpam(inboundId: string): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const r = await callBackend('/api/email/restore-from-spam', { inbound_id: inboundId })
@@ -348,7 +348,7 @@ export async function composeEmail(input: {
   subject: string
   bodyText: string
 }): Promise<EmailActionResult & { conversationId?: string }> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
   const slug = await activeClientSlug()
   const r = await callBackend('/api/email/compose', {
@@ -372,7 +372,7 @@ export async function approveCandidate(
   candidateId: string,
   payload?: { question?: string; answer?: string; category?: string },
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.review_candidates')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/email/faq-candidate/approve', {
     candidate_id: candidateId,
@@ -388,7 +388,7 @@ export async function approveCandidate(
 
 /** Odrzuć kandydata FAQ. */
 export async function rejectCandidate(candidateId: string): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.review_candidates')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/email/faq-candidate/reject', { candidate_id: candidateId })
   if (!r.ok) return { ok: false, message: `Nie udało się odrzucić (${r.status}).` }
@@ -403,7 +403,7 @@ export async function forwardInbound(
   toAddress: string,
   note?: string,
 ): Promise<EmailActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const to = (toAddress || '').trim()

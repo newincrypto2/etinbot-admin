@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 
 /**
  * Akcje na dokumencie KB: browser → (auth EDITOR+) → backend (Bearer).
@@ -9,7 +9,7 @@ import { assertRoleOrFail } from '@/lib/auth-helpers'
  * - retry → ponawia przetwarzanie (failed/undone → queued)
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return new NextResponse(guard.message, { status: 403 })
 
   const { id } = await ctx.params

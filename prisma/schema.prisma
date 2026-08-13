@@ -331,6 +331,15 @@ model AdminUser {
   isActive     Boolean  @default(true)
   clientId     String?  @db.Uuid
   emailSignatureHtml String? @map("email_signature_html")
+  // Inkrementowany przy zmianie roli/uprawnień/reset hasła — JWT ze starym
+  // sessionVersion jest traktowany jak brak sesji (wymusza ponowne logowanie
+  // zamiast czekania do 30 dni na wygaśnięcie tokena). Domyślnie 0 — brak
+  // pola w starym tokenie też liczy się jako 0 (kompatybilność wsteczna).
+  sessionVersion Int    @default(0) @map("session_version")
+  // Nadpisania uprawnień per-user na bazie presetu roli (lib/permissions.ts
+  // ROLE_DEFAULTS). Format: {"<PermissionKey>": boolean}. null/brak klucza =
+  // dziedziczy z roli.
+  permissions  Json?    @map("permissions")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -26,57 +26,59 @@ import {
 
 // Menu e-commerce (produkcja KH) — zmieniać tylko świadomie (KH widzi to menu 1:1).
 // 07.2026: dodane Wyceny (moduł wycen B2B) — tylko vertical ecommerce.
+// `perm` = klucz z lib/permissions.ts (PermissionKey) wymagany żeby pozycja
+// była widoczna — widoczność steruje granularnymi uprawnieniami usera, nie
+// samą rolą (rola = tylko preset).
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/poczta', label: 'Poczta', icon: Mail },
-  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle },
-  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
-  { href: '/products', label: 'Produkty', icon: Package },
-  { href: '/orders', label: 'Zamówienia', icon: ShoppingCart },
-  { href: '/reship', label: 'Dosyłki', icon: PackagePlus },
-  { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2 },
-  { href: '/wyceny', label: 'Wyceny', icon: Calculator },
-  { href: '/promo', label: 'Pasek promo', icon: Megaphone },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle },
-  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
-  { href: '/billing', label: 'Koszty', icon: Coins },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard.view' },
+  { href: '/poczta', label: 'Poczta', icon: Mail, perm: 'mail.view' },
+  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle, perm: 'conversations.view' },
+  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle, perm: 'escalations.view' },
+  { href: '/products', label: 'Produkty', icon: Package, perm: 'products.view' },
+  { href: '/orders', label: 'Zamówienia', icon: ShoppingCart, perm: 'orders.view' },
+  { href: '/reship', label: 'Dosyłki', icon: PackagePlus, perm: 'reship.view' },
+  { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2, perm: 'returns.view' },
+  { href: '/wyceny', label: 'Wyceny', icon: Calculator, perm: 'quotes.view' },
+  { href: '/promo', label: 'Pasek promo', icon: Megaphone, perm: 'promobar.view' },
+  { href: '/faq', label: 'FAQ', icon: HelpCircle, perm: 'faq.view' },
+  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap, perm: 'faq.view' },
+  { href: '/billing', label: 'Koszty', icon: Coins, perm: 'billing.view' },
 ]
 
 // Menu rental (najem krótkoterminowy) — wspólne pozycje + Apartamenty/Rezerwacje
 // zamiast bloku e-commerce (Produkty…Pasek promo).
 const rentalNavItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/poczta', label: 'Poczta', icon: Mail },
-  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle },
-  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle },
-  { href: '/apartments', label: 'Apartamenty', icon: BedDouble },
-  { href: '/reservations', label: 'Rezerwacje', icon: CalendarCheck },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle },
-  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap },
-  { href: '/billing', label: 'Koszty', icon: Coins },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard.view' },
+  { href: '/poczta', label: 'Poczta', icon: Mail, perm: 'mail.view' },
+  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle, perm: 'conversations.view' },
+  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle, perm: 'escalations.view' },
+  { href: '/apartments', label: 'Apartamenty', icon: BedDouble, perm: 'apartments.view' },
+  { href: '/reservations', label: 'Rezerwacje', icon: CalendarCheck, perm: 'reservations.view' },
+  { href: '/faq', label: 'FAQ', icon: HelpCircle, perm: 'faq.view' },
+  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap, perm: 'faq.view' },
+  { href: '/billing', label: 'Koszty', icon: Coins, perm: 'billing.view' },
 ]
 
 const adminItems = [
-  { href: '/settings/users', label: 'Użytkownicy', icon: Users },
-  { href: '/settings', label: 'Ustawienia', icon: Settings },
+  { href: '/settings/users', label: 'Użytkownicy', icon: Users, perm: 'users.manage' },
+  { href: '/settings', label: 'Ustawienia', icon: Settings, perm: 'settings.manage' },
 ]
 
 type SidebarProps = {
-  role: string
+  permissions: Record<string, boolean>
   vertical?: string | null
   open: boolean
   onClose: () => void
 }
 
-export function Sidebar({ role, vertical, open, onClose }: SidebarProps) {
+export function Sidebar({ permissions, vertical, open, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   // Nawigacja zależna od verticala AKTYWNEGO tenanta. Domyślnie (i dla ecommerce)
   // menu e-commerce — gwarantuje zero zmian dla KH. Rental dostaje własny zestaw.
   const baseItems = vertical === 'rental' ? rentalNavItems : navItems
-  // Koszty = dane finansowe/marże — ukryte dla ról poniżej OWNER (spójne z page guard).
-  const isOwnerUp = role === 'SUPERADMIN' || role === 'OWNER'
-  const items = isOwnerUp ? baseItems : baseItems.filter((i) => i.href !== '/billing')
+  const items = baseItems.filter((i) => permissions[i.perm] !== false)
+  const showAdminSection = adminItems.some((i) => permissions[i.perm]) || permissions['clients.manage']
 
   const content = (
     <>
@@ -110,14 +112,14 @@ export function Sidebar({ role, vertical, open, onClose }: SidebarProps) {
           )
         })}
 
-        {(role === 'SUPERADMIN' || role === 'OWNER') && (
+        {showAdminSection && (
           <>
             <div className="pt-5 pb-1.5 px-3">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Admin
               </span>
             </div>
-            {role === 'SUPERADMIN' && (
+            {permissions['clients.manage'] && (
               <NavLink
                 href="/clients"
                 label="Klienci"
@@ -126,16 +128,18 @@ export function Sidebar({ role, vertical, open, onClose }: SidebarProps) {
                 onClick={onClose}
               />
             )}
-            {adminItems.map(({ href, label, icon: Icon }) => (
-              <NavLink
-                key={href}
-                href={href}
-                label={label}
-                icon={<Icon className="h-[18px] w-[18px]" />}
-                active={pathname.startsWith(href)}
-                onClick={onClose}
-              />
-            ))}
+            {adminItems
+              .filter((i) => permissions[i.perm])
+              .map(({ href, label, icon: Icon }) => (
+                <NavLink
+                  key={href}
+                  href={href}
+                  label={label}
+                  icon={<Icon className="h-[18px] w-[18px]" />}
+                  active={pathname.startsWith(href)}
+                  onClick={onClose}
+                />
+              ))}
           </>
         )}
       </nav>

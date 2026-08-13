@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 import { listEscalations, getEscalationStats } from '@/queries/escalations'
-import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { EscalationCard } from './_components/EscalationCard'
 import { ResolveAllButton } from './_components/ResolveAllButton'
 import { activeClientSlug } from '@/lib/tenant'
@@ -31,14 +31,14 @@ export default async function EscalationsPage(props: { searchParams: SearchParam
   const status = params.status ?? 'unresolved'
   const reason = params.reason ?? 'all'
 
-  const [rows, stats, role, vertical] = await Promise.all([
+  const [rows, stats, permissions, vertical] = await Promise.all([
     listEscalations({ clientSlug: (await activeClientSlug()), status, reason }),
     getEscalationStats((await activeClientSlug())),
-    getCurrentRole(),
+    getCurrentPermissions(),
     getVertical((await activeClientSlug())),
   ])
   const buildings = vertical === 'rental' ? await getBuildings() : []
-  const canEdit = hasRole(role, 'EDITOR')
+  const canEdit = permissions['escalations.manage']
 
   return (
     <div className="space-y-6">

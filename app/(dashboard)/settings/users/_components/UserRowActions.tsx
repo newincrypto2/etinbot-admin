@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Pencil, Trash2, KeyRound, Power } from 'lucide-react'
+import { Pencil, Trash2, KeyRound, Power, SlidersHorizontal } from 'lucide-react'
 
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,6 +18,7 @@ import {
   deleteUser, toggleUserActive, updateUser, resetUserPassword,
   type ActionResult,
 } from '@/actions/users'
+import { PermissionsDialog, type PermissionGroup } from './PermissionsEditor'
 
 const ROLES = [
   { value: 'SUPERADMIN', label: 'Superadmin' },
@@ -33,16 +34,23 @@ type Props = {
     email: string
     role: string
     isActive: boolean
+    permissions: Partial<Record<string, boolean>>
   }
   isCurrentUser: boolean
+  permissionGroups: PermissionGroup[]
+  permissionLabels: Record<string, string>
+  roleDefaults: Record<string, string[]>
 }
 
-export function UserRowActions({ user, isCurrentUser }: Props) {
+export function UserRowActions({
+  user, isCurrentUser, permissionGroups, permissionLabels, roleDefaults,
+}: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [editOpen, setEditOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
   const [delOpen, setDelOpen] = useState(false)
+  const [permsOpen, setPermsOpen] = useState(false)
 
   const onToggle = () => startTransition(async () => {
     await toggleUserActive(user.id)
@@ -85,6 +93,17 @@ export function UserRowActions({ user, isCurrentUser }: Props) {
       <Button
         size="icon-sm"
         variant="ghost"
+        title={isCurrentUser ? 'Nie możesz edytować własnych uprawnień' : 'Uprawnienia szczegółowe'}
+        onClick={() => setPermsOpen(true)}
+        disabled={pending || isCurrentUser}
+        className="text-indigo-600"
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+      </Button>
+
+      <Button
+        size="icon-sm"
+        variant="ghost"
         title="Reset hasła"
         onClick={() => setPwOpen(true)}
         disabled={pending}
@@ -118,6 +137,20 @@ export function UserRowActions({ user, isCurrentUser }: Props) {
         onOpenChange={setPwOpen}
         userId={user.id}
         userName={user.name}
+      />
+
+      {/* Uprawnienia szczegółowe */}
+      <PermissionsDialog
+        open={permsOpen}
+        onOpenChange={setPermsOpen}
+        userId={user.id}
+        userName={user.name}
+        role={user.role}
+        overrides={user.permissions}
+        groups={permissionGroups}
+        labels={permissionLabels}
+        roleDefaults={roleDefaults[user.role] ?? []}
+        onSaved={() => router.refresh()}
       />
 
       {/* Delete confirm */}

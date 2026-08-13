@@ -1,12 +1,12 @@
 'use server'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import type { SyncResult } from '@/actions/products'
 import { activeClientSlug } from '@/lib/tenant'
 
 /** Ręczne uruchomienie syncu zamówień — woła backend EtinBOT (POST /api/admin/sync-orders). */
 export async function triggerOrderSync(): Promise<SyncResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('orders.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const base = process.env.BOT_API_URL

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { auth } from '@/lib/auth'
 import { callBackend } from '@/lib/backend'
 import { prisma } from '@/lib/prisma'
@@ -19,7 +19,7 @@ async function agentName(): Promise<string> {
 // odpowiedzi człowieka dostarcza widget webchat przez GET /api/webchat/poll.
 
 export async function takeoverConversation(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('conversations.manage')
   if (!guard.ok) return guard
   const res = await callBackend(`/api/admin/conversation/${id}/takeover`, { agent: await agentName() })
   if (!res.ok) return { ok: false, message: res.text || 'Błąd backendu przy przejęciu rozmowy.' }
@@ -28,7 +28,7 @@ export async function takeoverConversation(id: string): Promise<ActionResult> {
 }
 
 export async function releaseConversation(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('conversations.manage')
   if (!guard.ok) return guard
   const res = await callBackend(`/api/admin/conversation/${id}/release`, {})
   if (!res.ok) return { ok: false, message: res.text || 'Błąd backendu przy oddawaniu rozmowy.' }
@@ -37,7 +37,7 @@ export async function releaseConversation(id: string): Promise<ActionResult> {
 }
 
 export async function replyInConversation(id: string, text: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('conversations.manage')
   if (!guard.ok) return guard
   const trimmed = text.trim()
   if (!trimmed) return { ok: false, message: 'Pusta wiadomość.' }
@@ -51,7 +51,7 @@ export async function replyInConversation(id: string, text: string): Promise<Act
 }
 
 export async function closeConversation(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('conversations.manage')
   if (!guard.ok) return guard
   await prisma.conversations.update({
     where: { id },
@@ -63,7 +63,7 @@ export async function closeConversation(id: string): Promise<ActionResult> {
 }
 
 export async function reopenConversation(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('conversations.manage')
   if (!guard.ok) return guard
   await prisma.conversations.update({
     where: { id },

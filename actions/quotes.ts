@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/lib/auth'
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { callBackend, callBackendGet } from '@/lib/backend'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
@@ -45,7 +45,7 @@ export type CreateQuoteInput = {
 export async function createQuote(
   input: CreateQuoteInput,
 ): Promise<QuoteActionResult & { quoteId?: string }> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   if (!input.product.trim()) return { ok: false, message: 'Podaj produkt do wyceny.' }
 
@@ -75,7 +75,7 @@ export async function createQuote(
 // ─── Ponowna analiza LLM ─────────────────────────────────────────────────────
 
 export async function reanalyzeQuote(id: string): Promise<QuoteActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const r = await callBackend(`/api/admin/quotes/${encodeURIComponent(id)}/analyze`, {})
@@ -88,7 +88,7 @@ export async function reanalyzeQuote(id: string): Promise<QuoteActionResult> {
 // ─── Zmiana statusu ──────────────────────────────────────────────────────────
 
 export async function setQuoteStatus(id: string, status: string): Promise<QuoteActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const body: Record<string, unknown> = { status }
@@ -130,7 +130,7 @@ export type SaveLinesResult = QuoteActionResult & {
 }
 
 export async function saveQuoteLines(id: string, input: SaveLinesInput): Promise<SaveLinesResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const r = await callBackend(`/api/admin/quotes/${encodeURIComponent(id)}/lines`, {
@@ -160,7 +160,7 @@ export async function createQuoteEmailDraft(
   id: string,
   input: { mailboxAddress: string; toAddress?: string; subject?: string; bodyText?: string },
 ): Promise<QuoteActionResult & { conversationId?: string }> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   if (!input.mailboxAddress.trim()) return { ok: false, message: 'Podaj adres skrzynki nadawczej.' }
 
@@ -194,7 +194,7 @@ export type CostItemInput = {
 }
 
 export async function upsertCostItems(items: CostItemInput[]): Promise<QuoteActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   if (items.length === 0) return { ok: false, message: 'Brak pozycji do zapisania.' }
   for (const it of items) {
@@ -209,7 +209,7 @@ export async function upsertCostItems(items: CostItemInput[]): Promise<QuoteActi
 }
 
 export async function seedCostItems(): Promise<QuoteActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const slug = await activeClientSlug()
@@ -228,7 +228,7 @@ export async function seedCostItems(): Promise<QuoteActionResult> {
 export async function searchWfirmaGoods(
   search: string,
 ): Promise<{ ok: boolean; goods: WfirmaGood[]; message?: string }> {
-  const guard = await assertRoleOrFail('VIEWER')
+  const guard = await assertPermissionOrFail('quotes.view')
   if (!guard.ok) return { ok: false, goods: [], message: guard.message }
 
   const slug = await activeClientSlug()

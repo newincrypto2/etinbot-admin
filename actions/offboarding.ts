@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { callBackend } from '@/lib/backend'
 
 // ─── Twarde kasowanie tenanta (off-boarding) ────────────────────────────────
@@ -17,7 +17,7 @@ export type DeleteTenantResult =
  * Panel dodatkowo wymaga SUPERADMIN.
  */
 export async function deleteTenant(slug: string, confirm: string): Promise<DeleteTenantResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const s = (slug || '').trim()

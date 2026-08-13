@@ -9,7 +9,7 @@ import {
 import { fmtPln, fmtUnits, serviceName, withMargin } from '@/lib/cost-format'
 import { fmtDateShort } from '@/lib/datetime'
 import { activeClientSlug } from '@/lib/tenant'
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -40,8 +40,8 @@ function monthLabel(monthIso: string): string {
 export default async function BillingPage(props: {
   searchParams: Promise<{ month?: string }>
 }) {
-  // Dane finansowe / marże — tylko OWNER wzwyż.
-  await requireRole('OWNER')
+  // Dane finansowe / marże — tylko OWNER wzwyż (billing.view).
+  await requirePermission('billing.view')
   const sp = await props.searchParams
   const monthRaw = sp.month?.match(/^\d{4}-\d{2}$/) ? `${sp.month}-01` : currentMonthIso()
   const ym = monthRaw.slice(0, 7)

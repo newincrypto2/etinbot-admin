@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { callBackend, callBackendGet } from '@/lib/backend'
 
 // UI danych dostępowych IdoBooking (vertical=rental). Endpointy backendu:
@@ -44,7 +44,7 @@ function mapCredential(c: any): IdoCredential {
 }
 
 export async function listIdoBookingCredentials(slug: string): Promise<ListIdoResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, items: [], message: guard.message }
 
   const r = await callBackendGet(`/api/admin/idobooking-credentials?slug=${encodeURIComponent(slug)}`)
@@ -62,7 +62,7 @@ export async function listIdoBookingCredentials(slug: string): Promise<ListIdoRe
 }
 
 export async function saveIdoBookingCredential(slug: string, fd: FormData): Promise<SaveResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const scope = s(fd, 'scope')

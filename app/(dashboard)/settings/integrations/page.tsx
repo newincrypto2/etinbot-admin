@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import {
   getClientSettings,
   getVertical,
@@ -20,7 +20,7 @@ import { buildingLabel } from '@/lib/building-format'
 import { getBuildings } from '@/queries/buildings'
 
 export default async function IntegrationsSettingsPage() {
-  await requireRole('OWNER')
+  await requirePermission('settings.manage')
   const vertical = await getVertical((await activeClientSlug()))
 
   if (vertical === 'ecommerce') {

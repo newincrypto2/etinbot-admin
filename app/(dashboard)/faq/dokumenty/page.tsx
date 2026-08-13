@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { ArrowLeft, FileText } from 'lucide-react'
 
-import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { DocumentsManager } from './_components/DocumentsManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function KbDocumentsPage() {
-  const role = await getCurrentRole()
-  const canEdit = hasRole(role, 'EDITOR')
+  const permissions = await getCurrentPermissions()
+  const canEdit = permissions['faq.manage']
 
   return (
     <div className="max-w-4xl space-y-6">

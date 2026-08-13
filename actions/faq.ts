@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 import { embed, shortenForVoice, vectorLiteral } from '@/lib/ai-helpers'
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq, type TargetLang } from '@/lib/translator'
 import { activeClientSlug } from '@/lib/tenant'
@@ -139,7 +139,7 @@ function parseFormData(fd: FormData): Partial<FaqInput> {
 // ---- Server actions: master PL ----
 
 export async function createFaq(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = FaqInputSchema.safeParse(parseFormData(fd))
@@ -196,7 +196,7 @@ export async function createFaq(_prev: ActionResult, fd: FormData): Promise<Acti
 }
 
 export async function updateFaq(id: string, _prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = FaqInputSchema.safeParse(parseFormData(fd))
@@ -254,7 +254,7 @@ export async function updateFaq(id: string, _prev: ActionResult, fd: FormData): 
 }
 
 export async function deleteFaq(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   try {
@@ -268,7 +268,7 @@ export async function deleteFaq(id: string): Promise<ActionResult> {
 }
 
 export async function toggleFaqActive(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const row = await prisma.faq.findUnique({
@@ -298,7 +298,7 @@ export async function updateTranslation(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = TranslationInputSchema.safeParse({
@@ -349,7 +349,7 @@ export async function regenerateTranslation(
   parentId: string,
   language: TargetLang,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const master = await prisma.faq.findUnique({

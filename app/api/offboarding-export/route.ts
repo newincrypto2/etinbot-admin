@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 
 /**
  * Proxy eksportu danych tenanta: browser → (auth SUPERADMIN) → backend (Bearer).
@@ -8,7 +8,7 @@ import { assertRoleOrFail } from '@/lib/auth-helpers'
  * GET, bo przycisk „Eksportuj" to zwykły link pobierania (Content-Disposition).
  */
 export async function GET(req: NextRequest) {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return new NextResponse(guard.message, { status: 403 })
 
   const slug = req.nextUrl.searchParams.get('slug')

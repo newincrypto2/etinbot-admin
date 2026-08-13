@@ -8,11 +8,11 @@ import { updateFaq } from '@/actions/faq'
 import { FaqForm } from '../../_components/FaqForm'
 import { TranslationsSection } from './_components/TranslationsSection'
 import { activeClientSlug } from '@/lib/tenant'
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 
 
 export default async function EditFaqPage(props: { params: Promise<{ id: string }> }) {
-  await requireRole('EDITOR')
+  await requirePermission('faq.manage')
   const { id } = await props.params
   const [faq, categories, translations, vertical] = await Promise.all([
     getFaqById(id),

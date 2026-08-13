@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { NextRequest } from 'next/server'
@@ -10,6 +11,13 @@ import { prisma } from '@/lib/prisma'
 //   OWNER      (3)  — właściciel obiektu (brat), pełen dostęp + zarządzanie userami
 //   EDITOR     (2)  — recepcja, edytuje FAQ/apartamenty/eskalacje, BEZ settings
 //   VIEWER     (1)  — tylko podgląd, bez edycji
+//
+// Rola ustawia PRESET granularnych uprawnień (lib/permissions.ts) — od
+// 08.2026 to permissions.hasPermission()/assertPermissionOrFail() są
+// właściwym mechanizmem kontroli dostępu w akcjach/stronach. hasRole/
+// requireRole/assertRoleOrFail zostają jako narzędzie niższego poziomu
+// (hierarchia ról) — używane tam, gdzie liczy się sam poziom roli, nie
+// konkretne uprawnienie modułu.
 // ============================================================
 
 export type AppRole = 'SUPERADMIN' | 'OWNER' | 'EDITOR' | 'VIEWER'
@@ -26,22 +34,70 @@ export function hasRole(current: string | undefined | null, min: AppRole): boole
   return ROLE_LEVEL[current as AppRole] >= ROLE_LEVEL[min]
 }
 
-/** Pobierz aktualną rolę usera — JWT lub DB fallback. */
-export async function getCurrentRole(): Promise<AppRole | null> {
-  const session = await auth()
-  if (!session?.user) return null
+// ============================================================
+// Sesja świeża względem DB (sessionVersion)
+// ============================================================
+// Zmiana roli/uprawnień/reset hasła (actions/users.ts) inkrementuje
+// admin_users.session_version. JWT niesie sessionVersion z chwili logowania
+// — jeśli nie zgadza się z DB, JWT jest przeterminowany (stara rola mogła
+// żyć w tokenie do 30 dni — to był bug: userka awansowana z VIEWER na
+// EDITOR nie mogła korzystać z nowych uprawnień bez ponownego logowania).
+// Traktujemy mismatch jak brak sesji.
+//
+// cache() (React) = jedno zapytanie DB per request/akcję niezależnie ile
+// razy getFreshSessionUser() zostanie wywołane (guardy w akcjach, layout,
+// permissions.ts — wszystkie dzielą ten sam wynik).
 
-  // JWT może być stary (sprzed migracji ról) — fallback do DB.
-  const jwtRole = session.user.role
-  if (jwtRole && jwtRole in ROLE_LEVEL) return jwtRole as AppRole
+export type FreshAdminUser = {
+  id: string
+  name: string
+  email: string
+  role: string
+  isActive: boolean
+  clientId: string | null
+  sessionVersion: number
+  permissions: unknown
+}
 
-  if (!session.user.email) return null
-  const fresh = await prisma.adminUser.findUnique({
-    where: { email: session.user.email },
-    select: { role: true },
+const fetchAdminUserByEmail = cache(async (email: string): Promise<FreshAdminUser | null> => {
+  return prisma.adminUser.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      clientId: true,
+      sessionVersion: true,
+      permissions: true,
+    },
   })
-  if (fresh?.role && fresh.role in ROLE_LEVEL) return fresh.role as AppRole
-  return null
+})
+
+/**
+ * DB-fresh user — null gdy: brak sesji, konto nieaktywne, LUB sessionVersion
+ * z JWT nie zgadza się z DB (sesja przeterminowana przez zmianę roli/
+ * uprawnień/reset hasła). Token bez pola sessionVersion (stare sesje sprzed
+ * migracji) liczy się jako 0 — brak masowego wylogowania przy deployu.
+ */
+export const getFreshSessionUser = cache(async (): Promise<FreshAdminUser | null> => {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return null
+  const fresh = await fetchAdminUserByEmail(email)
+  if (!fresh || !fresh.isActive) return null
+  const tokenVersion = session.user.sessionVersion ?? 0
+  const dbVersion = fresh.sessionVersion ?? 0
+  if (tokenVersion !== dbVersion) return null
+  return fresh
+})
+
+/** Pobierz aktualną rolę usera — DB-fresh (patrz getFreshSessionUser). */
+export async function getCurrentRole(): Promise<AppRole | null> {
+  const fresh = await getFreshSessionUser()
+  if (!fresh?.role || !(fresh.role in ROLE_LEVEL)) return null
+  return fresh.role as AppRole
 }
 
 // ============================================================
@@ -51,6 +107,12 @@ export async function getCurrentRole(): Promise<AppRole | null> {
 export async function requireAuth() {
   const session = await auth()
   if (!session) redirect('/login')
+  // Sesja istnieje wg NextAuth, ale sessionVersion mógł zostać przez admina
+  // unieważniony (zmiana roli/uprawnień/reset hasła) — wymuś realne
+  // wylogowanie (czyszczenie cookie), inaczej middleware odbije z /login
+  // z powrotem do środka (JWT wciąż podpisany i ważny czasowo).
+  const fresh = await getFreshSessionUser()
+  if (!fresh) redirect('/api/auth/session-expired')
   return session
 }
 

@@ -1,12 +1,18 @@
 import Link from 'next/link'
 import { Shield, User as UserIcon, UserPlus, Eye, ArrowLeft } from 'lucide-react'
 
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePermission, PERMISSION_GROUPS, PERMISSION_LABELS, ROLE_DEFAULTS, parseOverrides } from '@/lib/permissions'
+import type { AppRole } from '@/lib/auth-helpers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { AddUserForm } from './_components/AddUserForm'
 import { UserRowActions } from './_components/UserRowActions'
+
+// Sety → tablice (props do klienta muszą być JSON-serializowalne).
+const ROLE_DEFAULTS_JSON = Object.fromEntries(
+  (Object.entries(ROLE_DEFAULTS) as [AppRole, Set<string>][]).map(([role, set]) => [role, [...set]]),
+) as Record<AppRole, string[]>
 
 const ROLE_META: Record<string, { label: string; color: string; icon: 'shield' | 'user' | 'eye' }> = {
   SUPERADMIN: { label: 'Superadmin', color: 'bg-indigo-100 text-indigo-700', icon: 'shield' },
@@ -16,7 +22,7 @@ const ROLE_META: Record<string, { label: string; color: string; icon: 'shield' |
 }
 
 export default async function UsersPage() {
-  await requireAdmin()
+  await requirePermission('users.manage')
 
   const session = await auth()
   const currentEmail = session?.user?.email ?? null
@@ -107,8 +113,12 @@ export default async function UsersPage() {
                         email: user.email,
                         role: user.role,
                         isActive: user.isActive,
+                        permissions: parseOverrides(user.permissions),
                       }}
                       isCurrentUser={isCurrent}
+                      permissionGroups={PERMISSION_GROUPS}
+                      permissionLabels={PERMISSION_LABELS}
+                      roleDefaults={ROLE_DEFAULTS_JSON}
                     />
                   </div>
                 </div>
@@ -125,6 +135,10 @@ export default async function UsersPage() {
         <div><strong>Operator</strong> — właściciel biznesu. Pełen dostęp + zarządzanie userami</div>
         <div><strong>Editor</strong> — obsługa klienta. Edytuje FAQ, pocztę, eskalacje. Bez Settings</div>
         <div><strong>Viewer</strong> — podgląd dashboard + lista konwersacji. Bez edycji</div>
+        <div className="pt-1 text-slate-500">
+          Powyższe to domyślny zakres roli — ikoną <strong>Uprawnienia szczegółowe</strong> przy
+          użytkowniku możesz nadpisać pojedyncze uprawnienia (np. Editor bez dostępu do Zwrotów).
+        </div>
       </div>
     </div>
   )

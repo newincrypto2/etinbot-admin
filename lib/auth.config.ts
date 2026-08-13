@@ -13,6 +13,9 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id
         token.role = (user as any).role
         token.clientId = (user as any).clientId ?? null
+        // sessionVersion — patrz lib/auth-helpers.ts getFreshSessionUser().
+        // Brak w tokenach sprzed tej migracji = undefined → traktowane jako 0.
+        token.sessionVersion = (user as any).sessionVersion ?? 0
       }
       return token
     },
@@ -20,6 +23,7 @@ export const authConfig: NextAuthConfig = {
       session.user.id = token.id as string
       session.user.role = token.role as string
       ;(session.user as any).clientId = (token.clientId as string | null) ?? null
+      ;(session.user as any).sessionVersion = (token.sessionVersion as number | undefined) ?? 0
       return session
     },
   },

@@ -5,7 +5,7 @@ import { listFaq, getFaqStats } from '@/queries/faq'
 import { getVertical } from '@/queries/client'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/lib/button-variants'
-import { getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { FaqRowActions } from './_components/FaqRowActions'
 import { activeClientSlug } from '@/lib/tenant'
 
@@ -25,13 +25,13 @@ export default async function FaqPage(props: { searchParams: SearchParams }) {
   const category = params.category ?? 'all'
   const search = params.q ?? ''
 
-  const [rows, stats, role, vertical] = await Promise.all([
+  const [rows, stats, permissions, vertical] = await Promise.all([
     listFaq({ clientSlug: (await activeClientSlug()), scope, category, search }),
     getFaqStats((await activeClientSlug())),
-    getCurrentRole(),
+    getCurrentPermissions(),
     getVertical((await activeClientSlug())),
   ])
-  const canEdit = hasRole(role, 'EDITOR')
+  const canEdit = permissions['faq.manage']
   const isEcom = vertical === 'ecommerce'
   const buildings = isEcom ? [] : await getBuildings()
 

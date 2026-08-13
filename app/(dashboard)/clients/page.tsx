@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { listClients } from '@/queries/clients'
 import { fmtDateLong } from '@/lib/datetime'
 import { ClientRowActions } from './_components/ClientRowActions'
 import { ChannelBadges } from './_components/ChannelBadges'
 
 export default async function ClientsPage() {
-  await requireRole('SUPERADMIN')
+  await requirePermission('clients.manage')
   const clients = await listClients()
 
   const active = clients.filter((c) => c.active).length

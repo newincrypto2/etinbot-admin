@@ -2,11 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
-import { Role } from '@prisma/client'
+import { Role, Prisma } from '@prisma/client'
 import { z } from 'zod'
 
 import { auth } from '@/lib/auth'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePermission, assertPermissionOrFail, PERMISSION_KEYS, type PermissionKey } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 
 export type ActionResult = {
@@ -43,7 +43,7 @@ function parseRole(v: FormDataEntryValue | null): Role {
 // ---- Create ----
 
 export async function createUser(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireAdmin()
+  await requirePermission('users.manage')
   const parsed = CreateUserSchema.safeParse({
     email: (fd.get('email') as string)?.trim().toLowerCase() ?? '',
     name: (fd.get('name') as string)?.trim() ?? '',
@@ -86,7 +86,7 @@ export async function updateUser(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  await requireAdmin()
+  await requirePermission('users.manage')
   const parsed = UpdateUserSchema.safeParse({
     name: (fd.get('name') as string)?.trim() ?? '',
     role: parseRole(fd.get('role')),
@@ -98,18 +98,32 @@ export async function updateUser(
     return { ok: false, message: 'Błędy walidacji', errors }
   }
 
+  const existing = await prisma.adminUser.findUnique({ where: { id: userId }, select: { role: true } })
+  // Zmiana roli unieważnia bieżącą sesję usera (sessionVersion) — inaczej
+  // stara rola w JWT żyje do 30 dni (bug sprzed tego systemu: userka
+  // awansowana z VIEWER na EDITOR nie widziała nowych uprawnień od razu).
+  const roleChanged = existing != null && existing.role !== parsed.data.role
+
   await prisma.adminUser.update({
     where: { id: userId },
-    data: parsed.data,
+    data: {
+      ...parsed.data,
+      ...(roleChanged ? { sessionVersion: { increment: 1 } } : {}),
+    },
   })
   revalidatePath('/settings/users')
-  return { ok: true, message: 'Zaktualizowano' }
+  return {
+    ok: true,
+    message: roleChanged
+      ? 'Zaktualizowano — zmiana roli wyloguje użytkownika z bieżącej sesji.'
+      : 'Zaktualizowano',
+  }
 }
 
 // ---- Toggle active (quick action) ----
 
 export async function toggleUserActive(userId: string): Promise<ActionResult> {
-  await requireAdmin()
+  await requirePermission('users.manage')
   const user = await prisma.adminUser.findUnique({ where: { id: userId } })
   if (!user) return { ok: false, message: 'Nie istnieje' }
   await prisma.adminUser.update({
@@ -127,7 +141,7 @@ export async function resetUserPassword(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  await requireAdmin()
+  await requirePermission('users.manage')
   const parsed = ResetPasswordSchema.safeParse({
     newPassword: (fd.get('newPassword') as string) ?? '',
   })
@@ -137,9 +151,11 @@ export async function resetUserPassword(
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12)
   await prisma.adminUser.update({
     where: { id: userId },
-    data: { passwordHash },
+    // sessionVersion++ — reset hasła przez admina unieważnia stare sesje
+    // usera (np. podejrzenie przejęcia konta), spójnie ze zmianą roli.
+    data: { passwordHash, sessionVersion: { increment: 1 } },
   })
-  return { ok: true, message: 'Hasło zresetowane' }
+  return { ok: true, message: 'Hasło zresetowane — poprzednie sesje użytkownika zostały unieważnione.' }
 }
 
 // ---- Edycja własnych danych (self-service, każdy zalogowany) ----
@@ -220,7 +236,7 @@ export async function changeOwnPassword(_prev: ActionResult, fd: FormData): Prom
 // ---- Delete ----
 
 export async function deleteUser(userId: string): Promise<ActionResult> {
-  await requireAdmin()
+  await requirePermission('users.manage')
   // Ochrona: nie pozwól usunąć samego siebie
   const session = await auth()
   const me = session?.user?.email
@@ -250,4 +266,48 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   await prisma.adminUser.delete({ where: { id: userId } })
   revalidatePath('/settings/users')
   return { ok: true, message: 'Usunięto' }
+}
+
+// ---- Uprawnienia szczegółowe (override presetu roli) ----
+
+const PermissionsPatchSchema = z.record(z.enum(PERMISSION_KEYS), z.boolean())
+
+/**
+ * Nadpisuje uprawnienia usera (permissions jsonb). `null`/pusty obiekt =
+ * „Przywróć domyślne z roli" (czyści override, dziedziczy z ROLE_DEFAULTS).
+ * Wymaga users.manage — edycja własnych uprawnień zablokowana (jak przy
+ * usuwaniu konta), żeby nikt przypadkiem nie odciął sobie dostępu.
+ */
+export async function updateUserPermissions(
+  userId: string,
+  permissions: Partial<Record<PermissionKey, boolean>> | null,
+): Promise<ActionResult> {
+  const guard = await assertPermissionOrFail('users.manage')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const session = await auth()
+  const me = session?.user?.email
+    ? await prisma.adminUser.findUnique({ where: { email: session.user.email }, select: { id: true } })
+    : null
+  if (me?.id === userId) {
+    return { ok: false, message: 'Nie możesz edytować własnych uprawnień' }
+  }
+
+  let value: Prisma.InputJsonValue | typeof Prisma.JsonNull = Prisma.JsonNull
+  if (permissions && Object.keys(permissions).length > 0) {
+    const parsed = PermissionsPatchSchema.safeParse(permissions)
+    if (!parsed.success) {
+      return { ok: false, message: 'Niepoprawne dane uprawnień' }
+    }
+    value = parsed.data as Prisma.InputJsonValue
+  }
+
+  await prisma.adminUser.update({
+    where: { id: userId },
+    // sessionVersion++ — nowe uprawnienia mają zacząć obowiązywać od razu,
+    // nie po do 30 dniach (spójnie ze zmianą roli / resetem hasła).
+    data: { permissions: value, sessionVersion: { increment: 1 } },
+  })
+  revalidatePath('/settings/users')
+  return { ok: true, message: 'Zapisano uprawnienia — użytkownik zostanie wylogowany z bieżącej sesji.' }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { activeClientSlug } from '@/lib/tenant'
 
 /**
@@ -19,7 +19,7 @@ function backendEnv(): { base: string; key: string } | null {
 }
 
 export async function GET() {
-  const guard = await assertRoleOrFail('VIEWER')
+  const guard = await assertPermissionOrFail('faq.view')
   if (!guard.ok) return new NextResponse(guard.message, { status: 403 })
 
   const env = backendEnv()
@@ -45,7 +45,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('faq.manage')
   if (!guard.ok) return new NextResponse(guard.message, { status: 403 })
 
   const env = backendEnv()

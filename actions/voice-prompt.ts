@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { callBackend, callBackendGet } from '@/lib/backend'
 
 // ─── Typy ────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ export type VoicePromptResult =
 // ─── Wygeneruj prompt voice + narzędzia ──────────────────────────────────────
 
 export async function generateVoicePrompt(slug: string): Promise<VoicePromptResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const r = await callBackendGet(`/api/admin/voice-prompt?slug=${encodeURIComponent(slug)}`)
@@ -57,7 +57,7 @@ export async function saveAgentId(
   slug: string,
   agentId: string,
 ): Promise<{ ok: boolean; message: string; agentId?: string | null }> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/set-agent-id', { slug, agent_id: agentId.trim() || null })
   if (!r.ok) {

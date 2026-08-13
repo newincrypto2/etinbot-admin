@@ -1,7 +1,7 @@
 'use client'
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,11 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LogIn, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Ustawiane przez app/api/auth/session-expired — zmiana roli/uprawnień/reset
+  // hasła unieważniła poprzednią sesję (patrz lib/auth-helpers.ts sessionVersion).
+  const sessionExpired = searchParams.get('wygasla') === '1'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +57,12 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold text-gray-900">EtinBOT</h1>
           <p className="text-sm text-gray-500 mt-1">Panel administracyjny — zaloguj się</p>
         </div>
+
+        {sessionExpired && (
+          <div className="mb-4 text-sm text-amber-700 text-center bg-amber-50 border border-amber-200 py-2 px-3 rounded-lg">
+            Twoja sesja wygasła (zmieniono rolę, uprawnienia lub hasło) — zaloguj się ponownie.
+          </div>
+        )}
 
         <Card className="shadow-sm border-gray-200/60">
           <CardContent className="pt-6">

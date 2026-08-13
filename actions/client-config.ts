@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { coerceObj } from '@/queries/clients'
 
@@ -61,7 +61,7 @@ async function saveTopLevel(
   okMsg: string,
   revalidate: string,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const cfg = await readConfig(slug)
@@ -130,7 +130,7 @@ async function saveIntegration(
   patch: Record<string, string | number>,
   okMsg: string,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const cfg = await readConfig(slug)
@@ -186,7 +186,7 @@ export async function updateWebchat(slug: string, fd: FormData): Promise<ActionR
 // zachowując ewentualne inne klucze features dodane w przyszłości.
 
 export async function updateFeatures(slug: string, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const cfg = await readConfig(slug)
@@ -212,7 +212,7 @@ export async function updateFeatures(slug: string, fd: FormData): Promise<Action
 // produktowe tenanta (zasada SaaS: per klient w configu, nie w kodzie).
 
 export async function updateAutonomy(slug: string, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const cfg = await readConfig(slug)
@@ -259,7 +259,7 @@ export type AllegroStart =
   | { ok: false; message: string }
 
 export async function allegroDeviceStart(slug: string): Promise<AllegroStart> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/allegro-device-start', { slug })
   if (!r.ok) return { ok: false, message: `Nie udało się rozpocząć (${r.status}). ${r.text.slice(0, 140)}` }
@@ -284,7 +284,7 @@ export type AllegroPoll =
   | { ok: false; message: string }
 
 export async function allegroDevicePoll(slug: string, deviceCode: string): Promise<AllegroPoll> {
-  const guard = await assertRoleOrFail('SUPERADMIN')
+  const guard = await assertPermissionOrFail('clients.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const r = await callBackend('/api/admin/allegro-device-poll', { slug, device_code: deviceCode })
   if (!r.ok) return { ok: false, message: `Błąd sprawdzania (${r.status}). ${r.text.slice(0, 140)}` }

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 
@@ -76,7 +76,7 @@ export async function updateBrand(_prev: ActionResult, fd: FormData): Promise<Ac
   if (!parsed.success) {
     return { ok: false, message: 'Błędy walidacji' }
   }
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const slug = await activeClientSlug()
   const id = await getClientIdBySlug(slug)
@@ -105,7 +105,7 @@ export async function updateEscalation(_prev: ActionResult, fd: FormData): Promi
     parsed.error.issues.forEach((i) => { errors[i.path.join('.')] = i.message })
     return { ok: false, message: 'Błędy walidacji', errors }
   }
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const slug = await activeClientSlug()
   const id = await getClientIdBySlug(slug)
@@ -133,7 +133,7 @@ export async function updateIntegrations(_prev: ActionResult, fd: FormData): Pro
   if (!parsed.success) {
     return { ok: false, message: 'Błędy walidacji' }
   }
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const slug = await activeClientSlug()
@@ -160,7 +160,7 @@ export async function updateIntegrations(_prev: ActionResult, fd: FormData): Pro
 // Sekrety (token, consumer_key/secret): puste pole = nie zmieniaj. wc_url można wyczyścić.
 
 export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = EcommerceIntegrationsSchema.safeParse({
@@ -217,7 +217,7 @@ export async function upsertEcommerceIntegrations(_prev: ActionResult, fd: FormD
 // ─── IdoBooking credentials (per-scope multi-tenant) ────────────────────────
 
 export async function upsertIdobookingCreds(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = IdoBookingCredsSchema.safeParse({
@@ -278,7 +278,7 @@ export async function upsertIdobookingCreds(_prev: ActionResult, fd: FormData): 
 }
 
 export async function deleteIdobookingCreds(scope: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const slug = await activeClientSlug()

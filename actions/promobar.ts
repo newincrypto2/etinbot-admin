@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 
@@ -153,7 +153,7 @@ function toData(d: z.infer<typeof PromoSchema>) {
 }
 
 export async function createPromoBar(_prev: PromoActionResult, fd: FormData): Promise<PromoActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const parsed = parseForm(fd)
   if (!parsed.success) {
@@ -170,7 +170,7 @@ export async function createPromoBar(_prev: PromoActionResult, fd: FormData): Pr
 }
 
 export async function updatePromoBar(id: string, _prev: PromoActionResult, fd: FormData): Promise<PromoActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const parsed = parseForm(fd)
   if (!parsed.success) {
@@ -184,7 +184,7 @@ export async function updatePromoBar(id: string, _prev: PromoActionResult, fd: F
 }
 
 export async function togglePromoBar(id: string, enabled: boolean): Promise<PromoActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const cid = await clientId()
   if (!cid) return { ok: false, message: 'Brak klienta' }
@@ -197,7 +197,7 @@ export async function togglePromoBar(id: string, enabled: boolean): Promise<Prom
 }
 
 export async function deletePromoBar(id: string): Promise<PromoActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
   const cid = await clientId()
   if (!cid) return { ok: false, message: 'Brak klienta' }

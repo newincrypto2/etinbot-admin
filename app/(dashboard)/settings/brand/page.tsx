@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getClientSettings } from '@/queries/client'
 import { updateBrand } from '@/actions/client'
 import { BrandForm } from './_components/BrandForm'
@@ -9,7 +9,7 @@ import { activeClientSlug } from '@/lib/tenant'
 
 
 export default async function BrandSettingsPage() {
-  await requireRole('OWNER')
+  await requirePermission('settings.manage')
   const settings = await getClientSettings((await activeClientSlug()))
   if (!settings) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 

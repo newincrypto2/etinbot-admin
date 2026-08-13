@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import type { ActionResult } from '@/actions/client'
 import { activeClientSlug } from '@/lib/tenant'
@@ -43,7 +43,7 @@ export async function upsertEscalationRecipient(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return guard
 
   const raw = {
@@ -113,7 +113,7 @@ export async function upsertEscalationRecipient(
 }
 
 export async function deleteEscalationRecipient(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return guard
   const id = fd.get('id') as string
   if (!id) return { ok: false, message: 'Brak ID' }
@@ -123,7 +123,7 @@ export async function deleteEscalationRecipient(_prev: ActionResult, fd: FormDat
 }
 
 export async function toggleEscalationRecipient(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('OWNER')
+  const guard = await assertPermissionOrFail('settings.manage')
   if (!guard.ok) return guard
   const id = fd.get('id') as string
   const field = fd.get('field') as string

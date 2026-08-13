@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 import { callBackend } from '@/lib/backend'
@@ -99,7 +99,7 @@ function dataForDb(d: ApartmentInput) {
 }
 
 export async function createApartment(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = ApartmentInputSchema.safeParse(parseFormData(fd))
@@ -125,7 +125,7 @@ export async function createApartment(_prev: ActionResult, fd: FormData): Promis
 }
 
 export async function updateApartment(id: string, _prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = ApartmentInputSchema.safeParse(parseFormData(fd))
@@ -149,7 +149,7 @@ export async function updateApartment(id: string, _prev: ActionResult, fd: FormD
 }
 
 export async function deleteApartment(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   try {
@@ -167,7 +167,7 @@ export async function deleteApartment(id: string): Promise<ActionResult> {
  * → upsert do `apartments`). Sync per AKTYWNY tenant. Fail-safe: błąd = komunikat, brak throw.
  */
 export async function syncFromIdoBooking(): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const slug = await activeClientSlug()
@@ -186,7 +186,7 @@ export async function syncFromIdoBooking(): Promise<ActionResult> {
  * Sync per AKTYWNY tenant. Fail-safe.
  */
 export async function syncReservationsFromIdoBooking(): Promise<ActionResult & { message: string }> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const slug = await activeClientSlug()

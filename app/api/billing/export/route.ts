@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getMarginMultiplier } from '@/lib/cost-format'
 import { getMonthlySummary } from '@/queries/costs'
 import { activeClientSlug } from '@/lib/tenant'
@@ -31,7 +31,7 @@ function parseMonth(raw: string | null): { iso: string; start: Date; end: Date }
 
 export async function GET(req: NextRequest) {
   // Dane finansowe / marże — tylko OWNER wzwyż (spójne z /billing).
-  await requireRole('OWNER')
+  await requirePermission('billing.export')
 
   const { searchParams } = req.nextUrl
   const month = parseMonth(searchParams.get('month'))

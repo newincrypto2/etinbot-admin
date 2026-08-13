@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { auth } from '@/lib/auth'
 import { embed, shortenForVoice, vectorLiteral } from '@/lib/ai-helpers'
-import { assertRoleOrFail } from '@/lib/auth-helpers'
+import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { TARGET_LANGUAGES, translateFaq } from '@/lib/translator'
 import { activeClientSlug } from '@/lib/tenant'
@@ -38,7 +38,7 @@ export async function resolveEscalation(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('escalations.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = ResolveSchema.safeParse({ note: (fd.get('note') as string)?.trim() })
@@ -57,7 +57,7 @@ export async function resolveEscalation(
 }
 
 export async function reopenEscalation(id: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('escalations.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   await prisma.escalations.update({
@@ -75,7 +75,7 @@ export async function acceptEscalationAsFaq(
   _prev: ActionResult,
   fd: FormData,
 ): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('escalations.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const parsed = AcceptAsFaqSchema.safeParse({
@@ -197,7 +197,7 @@ export async function acceptEscalationAsFaq(
 
 
 export async function resolveAllUnresolved(reason: string): Promise<ActionResult> {
-  const guard = await assertRoleOrFail('EDITOR')
+  const guard = await assertPermissionOrFail('escalations.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
 
   const client = await prisma.clients.findUnique({

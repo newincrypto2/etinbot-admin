@@ -4,7 +4,7 @@ import {
   ArrowLeft, Package, ShoppingCart, MessageCircle, AlertTriangle, Mail, HelpCircle, Users, CheckCircle2,
 } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getClientBySlug, getClientConfigForms, getTenantHealth, listClientUsers } from '@/queries/clients'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { ChannelBadges } from '../_components/ChannelBadges'
@@ -51,7 +51,7 @@ function fmtIso(iso: string | null): string {
 }
 
 export default async function ClientCardPage(props: { params: Params; searchParams: Search }) {
-  await requireRole('SUPERADMIN')
+  await requirePermission('clients.manage')
   const { id: slug } = await props.params
   const { tab: tabParam } = await props.searchParams
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam! : 'overview'

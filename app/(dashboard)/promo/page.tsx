@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { Megaphone, Plus } from 'lucide-react'
 
-import { requireAuth, getCurrentRole, hasRole } from '@/lib/auth-helpers'
+import { requireAuth } from '@/lib/auth-helpers'
+import { getCurrentPermissions } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { PromoRowActions } from './_components/PromoRowActions'
@@ -10,8 +11,8 @@ import { activeClientSlug } from '@/lib/tenant'
 
 export default async function PromoPage() {
   await requireAuth()
-  const role = await getCurrentRole()
-  const canEdit = hasRole(role, 'EDITOR')
+  const permissions = await getCurrentPermissions()
+  const canEdit = permissions['promobar.manage']
   const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) return <div className="p-8 text-slate-500">Brak danych klienta.</div>
 

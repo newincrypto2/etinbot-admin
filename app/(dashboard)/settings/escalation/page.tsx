@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft, Bell } from 'lucide-react'
 
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getClientSettings } from '@/queries/client'
 import { listEscalationRecipients } from '@/queries/notifications'
 import { updateEscalation } from '@/actions/client'
@@ -14,7 +14,7 @@ import { getBuildings } from '@/queries/buildings'
 
 
 export default async function EscalationSettingsPage() {
-  await requireRole('OWNER')
+  await requirePermission('settings.manage')
   const [settings, recipients, vertical] = await Promise.all([
     getClientSettings((await activeClientSlug())),
     listEscalationRecipients((await activeClientSlug())),

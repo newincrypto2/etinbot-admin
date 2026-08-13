@@ -5,12 +5,12 @@ import { ArrowLeft } from 'lucide-react'
 import { createApartment } from '@/actions/apartments'
 import { getBuildings } from '@/queries/buildings'
 import { ApartmentForm } from '../_components/ApartmentForm'
-import { requireRole } from '@/lib/auth-helpers'
+import { requirePermission } from '@/lib/permissions'
 import { getVertical } from '@/queries/client'
 import { activeClientSlug } from '@/lib/tenant'
 
 export default async function NewApartmentPage() {
-  await requireRole('EDITOR')
+  await requirePermission('apartments.manage')
   const vertical = await getVertical((await activeClientSlug()))
   if (vertical !== 'rental') redirect('/')
 
