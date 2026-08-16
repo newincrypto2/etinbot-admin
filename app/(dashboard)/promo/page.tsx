@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Megaphone, Plus } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { getCurrentPermissions } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { fmtFullDateTime } from '@/lib/datetime'
@@ -11,6 +12,7 @@ import { activeClientSlug } from '@/lib/tenant'
 
 export default async function PromoPage() {
   await requireAuth()
+  await requireModule('promobar')
   const permissions = await getCurrentPermissions()
   const canEdit = permissions['promobar.manage']
   const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { getProductStats, listProducts, findAttr } from '@/queries/products'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { SyncButton } from '@/components/SyncButton'
@@ -18,6 +19,7 @@ function stripHtml(s: string | null): string {
 
 export default async function ProductsPage(props: { searchParams: SearchParams }) {
   await requireAuth()
+  await requireModule('products')
   const params = await props.searchParams
   const search = params.q?.trim() ?? ''
   const stock = params.stock ?? 'all'

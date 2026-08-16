@@ -8,6 +8,7 @@ import { EmailReplyPanel } from './_components/EmailReplyPanel'
 import { ThreadActions } from './_components/ThreadActions'
 import { ForwardButton } from './_components/ForwardButton'
 import { MessageBody } from './_components/MessageBody'
+import { requireModule } from '@/lib/modules-server'
 
 const ROLE_LABEL: Record<string, { label: string; color: string }> = {
   user: { label: 'Klient', color: 'bg-blue-50 border-blue-200 text-blue-900' },
@@ -31,6 +32,7 @@ function shipBadge(kind: string): string {
 }
 
 export default async function PocztaThreadPage(props: { params: Promise<{ id: string }> }) {
+  await requireModule('mail')
   const { id } = await props.params
   const thread = await getEmailThread(id)
   if (!thread) notFound()

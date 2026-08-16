@@ -1,170 +1,107 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { X } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
-import {
-  Users,
-  Package,
-  ShoppingCart,
-  Settings,
-  MessageCircle,
-  Mail,
-  LayoutDashboard,
-  AlertTriangle,
-  HelpCircle,
-  GraduationCap,
-  Coins,
-  Undo2,
-  X,
-  Megaphone,
-  Building2,
-  PackagePlus,
-  BedDouble,
-  CalendarCheck,
-  Calculator,
-} from 'lucide-react'
+import { matchPlan, type ModuleId } from '@/lib/modules'
+import { buildNavGroups } from './nav'
+import { TenantTile, type TenantTileData } from './TenantTile'
 
-// Menu e-commerce (produkcja KH) — zmieniać tylko świadomie (KH widzi to menu 1:1).
-// 07.2026: dodane Wyceny (moduł wycen B2B) — tylko vertical ecommerce.
-// `perm` = klucz z lib/permissions.ts (PermissionKey) wymagany żeby pozycja
-// była widoczna — widoczność steruje granularnymi uprawnieniami usera, nie
-// samą rolą (rola = tylko preset).
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard.view' },
-  { href: '/poczta', label: 'Poczta', icon: Mail, perm: 'mail.view' },
-  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle, perm: 'conversations.view' },
-  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle, perm: 'escalations.view' },
-  { href: '/products', label: 'Produkty', icon: Package, perm: 'products.view' },
-  { href: '/orders', label: 'Zamówienia', icon: ShoppingCart, perm: 'orders.view' },
-  { href: '/reship', label: 'Dosyłki', icon: PackagePlus, perm: 'reship.view' },
-  { href: '/zwroty', label: 'Zwroty Allegro', icon: Undo2, perm: 'returns.view' },
-  { href: '/wyceny', label: 'Wyceny', icon: Calculator, perm: 'quotes.view' },
-  { href: '/promo', label: 'Pasek promo', icon: Megaphone, perm: 'promobar.view' },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle, perm: 'faq.view' },
-  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap, perm: 'faq.view' },
-  { href: '/billing', label: 'Koszty', icon: Coins, perm: 'billing.view' },
-]
-
-// Menu rental (najem krótkoterminowy) — wspólne pozycje + Apartamenty/Rezerwacje
-// zamiast bloku e-commerce (Produkty…Pasek promo).
-const rentalNavItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard.view' },
-  { href: '/poczta', label: 'Poczta', icon: Mail, perm: 'mail.view' },
-  { href: '/conversations', label: 'Konwersacje', icon: MessageCircle, perm: 'conversations.view' },
-  { href: '/escalations', label: 'Eskalacje', icon: AlertTriangle, perm: 'escalations.view' },
-  { href: '/apartments', label: 'Apartamenty', icon: BedDouble, perm: 'apartments.view' },
-  { href: '/reservations', label: 'Rezerwacje', icon: CalendarCheck, perm: 'reservations.view' },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle, perm: 'faq.view' },
-  { href: '/faq-nauka', label: 'Nauka FAQ', icon: GraduationCap, perm: 'faq.view' },
-  { href: '/billing', label: 'Koszty', icon: Coins, perm: 'billing.view' },
-]
-
-const adminItems = [
-  { href: '/settings/users', label: 'Użytkownicy', icon: Users, perm: 'users.manage' },
-  { href: '/settings', label: 'Ustawienia', icon: Settings, perm: 'settings.manage' },
-]
+// Menu buduje się z rejestru MODULES (lib/modules.ts + components/layout/nav.ts)
+// zamiast dwóch zaszytych na sztywno tablic (navItems/rentalNavItems, stan
+// sprzed redesignu 08.2026). WAŻNE — parytet KH: tenant ecommerce bez
+// override'ów w config.modules (m.in. KrainaHerbaty) musi widzieć identyczny
+// zestaw pozycji jak dawne menu 1:1 — to gwarantuje lib/modules.ts
+// (MODULES[].defaultFor), nie zmieniaj filtrowania tutaj bez świadomości,
+// że dotyka to produkcji KH.
 
 type SidebarProps = {
   permissions: Record<string, boolean>
+  modules: Record<ModuleId, boolean>
   vertical?: string | null
+  activeTenant: TenantTileData
+  /** Lista tenantów do przełączania w kafelku (tylko SUPERADMIN bez klienta). */
+  tenantList: TenantTileData[] | null
   open: boolean
   onClose: () => void
 }
 
-export function Sidebar({ permissions, vertical, open, onClose }: SidebarProps) {
-  const pathname = usePathname()
+const SIDEBAR_GRADIENT = { background: 'linear-gradient(178deg, #16203F 0%, #0E1630 55%)' }
 
-  // Nawigacja zależna od verticala AKTYWNEGO tenanta. Domyślnie (i dla ecommerce)
-  // menu e-commerce — gwarantuje zero zmian dla KH. Rental dostaje własny zestaw.
-  const baseItems = vertical === 'rental' ? rentalNavItems : navItems
-  const items = baseItems.filter((i) => permissions[i.perm] !== false)
-  const showAdminSection = adminItems.some((i) => permissions[i.perm]) || permissions['clients.manage']
+export function Sidebar({ permissions, modules, activeTenant, tenantList, open, onClose }: SidebarProps) {
+  const pathname = usePathname()
+  const groups = buildNavGroups(modules, permissions)
+  const plan = matchPlan(modules)
+  const planLabel = plan?.label ?? 'Własny zestaw'
 
   const content = (
     <>
-      <div className="flex items-center justify-between px-4 py-5">
+      <div className="flex items-center justify-between px-4 py-4">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-          <div className="h-8 w-8 rounded-lg bg-indigo-500 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">E</span>
+          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-[9px] bg-[var(--brand-blue)]">
+            <span className="text-sm font-bold text-white">E</span>
           </div>
-          <span className="font-semibold text-[15px] text-white">EtinBOT</span>
+          <span className="text-[15px] font-semibold tracking-tight text-white">
+            Etin<span className="text-[#7FA9F5]">BOT</span>
+          </span>
         </Link>
         <button
           onClick={onClose}
-          className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-700 hover:text-white md:hidden"
         >
           <X className="h-5 w-5" />
         </button>
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
-          return (
-            <NavLink
-              key={href}
-              href={href}
-              label={label}
-              icon={<Icon className="h-[18px] w-[18px]" />}
-              active={active}
-              onClick={onClose}
-            />
-          )
-        })}
+      <TenantTile active={activeTenant} planLabel={planLabel} tenants={tenantList} />
 
-        {showAdminSection && (
-          <>
-            <div className="pt-5 pb-1.5 px-3">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Admin
-              </span>
-            </div>
-            {permissions['clients.manage'] && (
-              <NavLink
-                href="/clients"
-                label="Klienci"
-                icon={<Building2 className="h-[18px] w-[18px]" />}
-                active={pathname.startsWith('/clients')}
-                onClick={onClose}
-              />
-            )}
-            {adminItems
-              .filter((i) => permissions[i.perm])
-              .map(({ href, label, icon: Icon }) => (
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
+        {groups.map((group) => (
+          <div key={group.key} className="mt-3.5 first:mt-0.5">
+            <span className="block px-2 pb-1.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#66759C]">
+              {group.label}
+            </span>
+            {group.items.map((item) => {
+              const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+              return (
                 <NavLink
-                  key={href}
-                  href={href}
-                  label={label}
-                  icon={<Icon className="h-[18px] w-[18px]" />}
-                  active={pathname.startsWith(href)}
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={<item.icon className="h-[18px] w-[18px]" />}
+                  active={active}
                   onClick={onClose}
                 />
-              ))}
-          </>
-        )}
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-slate-700/50">
-        <div className="px-3 text-[11px] text-slate-500">
-          EtinBOT &copy; {new Date().getFullYear()}
-        </div>
+      <div className="flex items-center gap-2 border-t border-white/[0.09] px-4 py-3 text-[12px] text-[#8DA0C9]">
+        <span className="relative flex h-[7px] w-[7px] flex-none">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+          <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
+        </span>
+        Bot aktywny
       </div>
     </>
   )
 
   return (
     <>
-      <aside className="hidden md:flex flex-col w-[220px] min-h-screen shrink-0" style={{ background: 'linear-gradient(180deg, #1a1c2c 0%, #11131f 100%)' }}>
+      <aside className="hidden min-h-screen w-[236px] shrink-0 flex-col md:flex" style={SIDEBAR_GRADIENT}>
         {content}
       </aside>
 
       {open && (
         <>
-          <div
-            className="md:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <aside className="md:hidden fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col shadow-xl animate-in slide-in-from-left duration-200" style={{ background: 'linear-gradient(180deg, #1a1c2c 0%, #11131f 100%)' }}>
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={onClose} />
+          <aside
+            className="fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col shadow-xl duration-200 animate-in slide-in-from-left md:hidden"
+            style={SIDEBAR_GRADIENT}
+          >
             {content}
           </aside>
         </>
@@ -185,14 +122,14 @@ function NavLink({ href, label, icon, active, onClick }: {
       href={href}
       onClick={onClick}
       className={cn(
-        'relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors',
+        'relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-colors',
         active
-          ? 'bg-white/[0.08] text-white'
-          : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
+          ? 'bg-[rgba(46,124,240,.16)] text-white'
+          : 'text-[#B9C4DE] hover:bg-white/[0.06] hover:text-white'
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-indigo-400" />
+        <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full bg-[var(--brand-blue)]" />
       )}
       {icon}
       {label}

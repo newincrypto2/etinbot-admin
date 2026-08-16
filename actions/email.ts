@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertModuleOrFail } from '@/lib/modules-server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
@@ -37,6 +38,8 @@ export async function getInboundHtml(
 ): Promise<{ ok: boolean; html?: string | null; message?: string }> {
   const session = await auth()
   if (!session?.user?.email) return { ok: false, message: 'Brak sesji — zaloguj się ponownie.' }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY
   if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY w env panelu.' }
@@ -104,6 +107,8 @@ export async function readFilteredMail(
 ): Promise<{ ok: boolean; subject?: string; from?: string; body?: string; message?: string }> {
   const guard = await assertPermissionOrFail('mail.view')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY
   if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY.' }
@@ -133,6 +138,8 @@ export async function sendDraft(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const signer = await currentUserName()
   const actorEmail = await currentUserEmail()
@@ -162,6 +169,8 @@ export async function wrapQuickReply(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   if (!coreText.trim()) return { ok: false, message: 'Wpisz rdzeń odpowiedzi.' }
 
   const signer = await currentUserName()
@@ -186,6 +195,8 @@ export async function discardDraft(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const r = await callBackend('/api/email/discard', { draft_id: draftId })
   if (!r.ok) return { ok: false, message: `Nie udało się odrzucić (${r.status}).` }
@@ -197,6 +208,8 @@ export async function discardDraft(
 export async function uploadAttachment(formData: FormData): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY
   if (!base || !key) return { ok: false, message: 'Brak BOT_API_URL / BOT_API_KEY.' }
@@ -235,6 +248,8 @@ export async function removeAttachment(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const r = await callBackend('/api/email/attachment/remove', { attachment_id: attachmentId })
   if (!r.ok) return { ok: false, message: `Nie udało się usunąć (${r.status}).` }
   revalidatePath(`/poczta/${conversationId}`)
@@ -250,6 +265,8 @@ async function addTag(id: string, tag: string): Promise<string[]> {
 export async function setEmailThreadClosed(id: string, closed: boolean): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   await prisma.conversations.update({
     where: { id },
     data: closed ? { status: 'closed', closed_at: new Date() } : { status: 'open', closed_at: null },
@@ -263,6 +280,8 @@ export async function setEmailThreadClosed(id: string, closed: boolean): Promise
 export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   await prisma.conversations.update({ where: { id }, data: { tags: await addTag(id, 'b2b') } })
   revalidatePath(`/poczta/${id}`)
   revalidatePath('/poczta')
@@ -278,6 +297,8 @@ export async function tagEmailThreadB2B(id: string): Promise<EmailActionResult> 
 export async function markEmailThreadSpam(id: string): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const conv = await prisma.conversations.findUnique({ where: { id }, select: { client_id: true } })
   if (!conv) return { ok: false, message: 'Wątek nie istnieje.' }
@@ -331,6 +352,8 @@ export async function markEmailThreadSpam(id: string): Promise<EmailActionResult
 export async function restoreFromSpam(inboundId: string): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const r = await callBackend('/api/email/restore-from-spam', { inbound_id: inboundId })
   if (!r.ok) {
@@ -350,6 +373,8 @@ export async function composeEmail(input: {
 }): Promise<EmailActionResult & { conversationId?: string }> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const slug = await activeClientSlug()
   const r = await callBackend('/api/email/compose', {
     slug,
@@ -374,6 +399,8 @@ export async function approveCandidate(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('faq.review_candidates')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('faq_learning')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const r = await callBackend('/api/email/faq-candidate/approve', {
     candidate_id: candidateId,
     question: payload?.question,
@@ -390,6 +417,8 @@ export async function approveCandidate(
 export async function rejectCandidate(candidateId: string): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('faq.review_candidates')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('faq_learning')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const r = await callBackend('/api/email/faq-candidate/reject', { candidate_id: candidateId })
   if (!r.ok) return { ok: false, message: `Nie udało się odrzucić (${r.status}).` }
   revalidatePath('/faq-nauka')
@@ -405,6 +434,8 @@ export async function forwardInbound(
 ): Promise<EmailActionResult> {
   const guard = await assertPermissionOrFail('mail.send')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('mail')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const to = (toAddress || '').trim()
   if (!to || !to.includes('@') || /[\s,;]/.test(to)) {

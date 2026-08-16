@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { Search, CalendarCheck } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { getCurrentPermissions } from '@/lib/permissions'
 import { activeClientSlug } from '@/lib/tenant'
-import { getVertical } from '@/queries/client'
 import { listReservations } from '@/queries/reservations'
 import { fmtDateLong } from '@/lib/datetime'
 import { SyncButton } from '@/components/SyncButton'
@@ -22,10 +21,7 @@ type SearchParams = Promise<{ status?: string; q?: string; page?: string }>
 
 export default async function ReservationsPage(props: { searchParams: SearchParams }) {
   await requireAuth()
-  // Moduł tylko dla rental — ecommerce nie ma rezerwacji (defense-in-depth,
-  // Sidebar już nie pokazuje tego linku dla tego verticala).
-  const vertical = await getVertical((await activeClientSlug()))
-  if (vertical !== 'rental') redirect('/')
+  await requireModule('reservations')
 
   const params = await props.searchParams
   const status = STATUS_TABS.some((t) => t.key === params.status) ? params.status! : 'all'

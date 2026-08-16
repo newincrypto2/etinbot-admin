@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { prisma } from '@/lib/prisma'
 import { PromoBarForm, type PromoBarValues } from '../../_components/PromoBarForm'
 import { activeClientSlug } from '@/lib/tenant'
@@ -17,6 +18,7 @@ function toLocal(d: Date | null): string {
 
 export default async function EditPromoPage(props: { params: Promise<{ id: string }> }) {
   await requireAuth()
+  await requireModule('promobar')
   const { id } = await props.params
   const client = await prisma.clients.findUnique({ where: { slug: (await activeClientSlug()) }, select: { id: true } })
   if (!client) notFound()

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/lib/auth'
 import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertModuleOrFail } from '@/lib/modules-server'
 import { callBackend, callBackendGet } from '@/lib/backend'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
@@ -47,6 +48,8 @@ export async function createQuote(
 ): Promise<QuoteActionResult & { quoteId?: string }> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
   if (!input.product.trim()) return { ok: false, message: 'Podaj produkt do wyceny.' }
 
   const slug = await activeClientSlug()
@@ -77,6 +80,8 @@ export async function createQuote(
 export async function reanalyzeQuote(id: string): Promise<QuoteActionResult> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const r = await callBackend(`/api/admin/quotes/${encodeURIComponent(id)}/analyze`, {})
   if (!r.ok) return { ok: false, message: `Nie udało się uruchomić analizy: ${backendError(r)}` }
@@ -90,6 +95,8 @@ export async function reanalyzeQuote(id: string): Promise<QuoteActionResult> {
 export async function setQuoteStatus(id: string, status: string): Promise<QuoteActionResult> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const body: Record<string, unknown> = { status }
   if (status === 'approved') body.approved_by = await currentUserName()
@@ -132,6 +139,8 @@ export type SaveLinesResult = QuoteActionResult & {
 export async function saveQuoteLines(id: string, input: SaveLinesInput): Promise<SaveLinesResult> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const r = await callBackend(`/api/admin/quotes/${encodeURIComponent(id)}/lines`, {
     lines: input.lines,
@@ -162,6 +171,8 @@ export async function createQuoteEmailDraft(
 ): Promise<QuoteActionResult & { conversationId?: string }> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
   if (!input.mailboxAddress.trim()) return { ok: false, message: 'Podaj adres skrzynki nadawczej.' }
 
   const r = await callBackend(`/api/admin/quotes/${encodeURIComponent(id)}/send-draft`, {
@@ -196,6 +207,8 @@ export type CostItemInput = {
 export async function upsertCostItems(items: CostItemInput[]): Promise<QuoteActionResult> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
   if (items.length === 0) return { ok: false, message: 'Brak pozycji do zapisania.' }
   for (const it of items) {
     if (!it.key || !it.label.trim()) return { ok: false, message: 'Pozycja cennika musi mieć etykietę.' }
@@ -211,6 +224,8 @@ export async function upsertCostItems(items: CostItemInput[]): Promise<QuoteActi
 export async function seedCostItems(): Promise<QuoteActionResult> {
   const guard = await assertPermissionOrFail('quotes.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const slug = await activeClientSlug()
   const r = await callBackend(`/api/admin/quote-cost-items/seed?slug=${encodeURIComponent(slug)}`, {})
@@ -230,6 +245,8 @@ export async function searchWfirmaGoods(
 ): Promise<{ ok: boolean; goods: WfirmaGood[]; message?: string }> {
   const guard = await assertPermissionOrFail('quotes.view')
   if (!guard.ok) return { ok: false, goods: [], message: guard.message }
+  const mod = await assertModuleOrFail('quotes')
+  if (!mod.ok) return { ok: false, goods: [], message: mod.message }
 
   const slug = await activeClientSlug()
   const p = new URLSearchParams({ slug, search: search.trim() })

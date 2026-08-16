@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { Plus, Wifi, KeyRound, Car } from 'lucide-react'
 
 import { listApartments, listBuildings } from '@/queries/apartments'
@@ -8,7 +7,7 @@ import { getCurrentPermissions } from '@/lib/permissions'
 import { ApartmentRowActions } from './_components/ApartmentRowActions'
 import { SyncButton } from './_components/SyncButton'
 import { activeClientSlug } from '@/lib/tenant'
-import { getVertical } from '@/queries/client'
+import { requireModule } from '@/lib/modules-server'
 
 
 import { buildingLabel, buildingColor } from '@/lib/building-format'
@@ -19,10 +18,7 @@ type SearchParams = Promise<{
 }>
 
 export default async function ApartmentsPage(props: { searchParams: SearchParams }) {
-  // Moduł tylko dla rental — ecommerce nie ma apartamentów (defense-in-depth,
-  // Sidebar już nie pokazuje tego linku dla tego verticala).
-  const vertical = await getVertical((await activeClientSlug()))
-  if (vertical !== 'rental') redirect('/')
+  await requireModule('apartments')
 
   const params = await props.searchParams
   const building = params.building ?? 'all'

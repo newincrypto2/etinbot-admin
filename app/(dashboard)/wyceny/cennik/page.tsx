@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { ArrowLeft, Settings2, AlertTriangle } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { listCostItems } from '@/queries/quotes'
 import { CennikEditor } from './_components/CennikEditor'
 
 export default async function CennikPage() {
   await requireAuth()
+  await requireModule('quotes')
   const { items, error } = await listCostItems()
 
   return (

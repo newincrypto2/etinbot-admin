@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { moduleOverridesFromConfig, type ModuleOverrides } from '@/lib/modules'
 
 // ─── Coerce helpers (jsonb z Prisma driver adapter bywa STRINGIEM) ──────────
 
@@ -138,12 +139,15 @@ export type ClientCard = {
   name: string
   vertical: string | null
   active: boolean
+  plan: string
   enabledChannels: string[]
   channels: ClientChannels
   elevenlabsAgentId: string | null
   createdAt: Date
   promptExtra: string
   configMaskedJson: string
+  /** Override'y config.modules — zakładka Moduły (lib/modules.ts robi z tego efektywny stan). */
+  moduleOverrides: ModuleOverrides
 }
 
 export async function getClientBySlug(slug: string): Promise<ClientCard | null> {
@@ -155,6 +159,7 @@ export async function getClientBySlug(slug: string): Promise<ClientCard | null> 
       name: true,
       vertical: true,
       active: true,
+      plan: true,
       enabled_channels: true,
       config: true,
       elevenlabs_agent_id: true,
@@ -171,12 +176,14 @@ export async function getClientBySlug(slug: string): Promise<ClientCard | null> 
     name: c.name,
     vertical: c.vertical,
     active: c.active,
+    plan: c.plan,
     enabledChannels: coerceArr(c.enabled_channels).filter((x): x is string => typeof x === 'string'),
     channels: channelsFromConfig(c.config, c.elevenlabs_agent_id),
     elevenlabsAgentId: c.elevenlabs_agent_id,
     createdAt: c.created_at,
     promptExtra,
     configMaskedJson: JSON.stringify(maskSecrets(cfg), null, 2),
+    moduleOverrides: moduleOverridesFromConfig(cfg),
   }
 }
 

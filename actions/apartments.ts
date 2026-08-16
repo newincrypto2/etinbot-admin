@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertModuleOrFail } from '@/lib/modules-server'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 import { callBackend } from '@/lib/backend'
@@ -101,6 +102,8 @@ function dataForDb(d: ApartmentInput) {
 export async function createApartment(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('apartments')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const parsed = ApartmentInputSchema.safeParse(parseFormData(fd))
   if (!parsed.success) {
@@ -127,6 +130,8 @@ export async function createApartment(_prev: ActionResult, fd: FormData): Promis
 export async function updateApartment(id: string, _prev: ActionResult, fd: FormData): Promise<ActionResult> {
   const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('apartments')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const parsed = ApartmentInputSchema.safeParse(parseFormData(fd))
   if (!parsed.success) {
@@ -151,6 +156,8 @@ export async function updateApartment(id: string, _prev: ActionResult, fd: FormD
 export async function deleteApartment(id: string): Promise<ActionResult> {
   const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('apartments')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   try {
     await prisma.apartments.delete({ where: { id } })
@@ -169,6 +176,8 @@ export async function deleteApartment(id: string): Promise<ActionResult> {
 export async function syncFromIdoBooking(): Promise<ActionResult> {
   const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('apartments')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const slug = await activeClientSlug()
   const r = await callBackend('/api/admin/sync-apartments', { slug })
@@ -188,6 +197,8 @@ export async function syncFromIdoBooking(): Promise<ActionResult> {
 export async function syncReservationsFromIdoBooking(): Promise<ActionResult & { message: string }> {
   const guard = await assertPermissionOrFail('apartments.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('reservations')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const slug = await activeClientSlug()
   const r = await callBackend('/api/admin/sync-reservations', { slug })

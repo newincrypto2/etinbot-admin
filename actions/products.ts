@@ -1,6 +1,7 @@
 'use server'
 
 import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertModuleOrFail } from '@/lib/modules-server'
 import { activeClientSlug } from '@/lib/tenant'
 
 export type SyncResult = { ok: boolean; message: string }
@@ -10,6 +11,8 @@ export type SyncResult = { ok: boolean; message: string }
 export async function triggerProductSync(): Promise<SyncResult> {
   const guard = await assertPermissionOrFail('products.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('products')
+  if (!mod.ok) return { ok: false, message: mod.message }
 
   const base = process.env.BOT_API_URL
   const key = process.env.BOT_API_KEY

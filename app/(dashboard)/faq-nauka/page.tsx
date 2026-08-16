@@ -4,9 +4,11 @@ import { listFaqCandidates } from '@/queries/email'
 import { CandidateCard } from './_components/CandidateCard'
 import { activeClientSlug } from '@/lib/tenant'
 import { getCurrentPermissions } from '@/lib/permissions'
+import { requireModule } from '@/lib/modules-server'
 
 
 export default async function FaqNaukaPage() {
+  await requireModule('faq_learning')
   const [candidates, permissions] = await Promise.all([
     listFaqCandidates({ clientSlug: (await activeClientSlug()), status: 'pending' }),
     getCurrentPermissions(),

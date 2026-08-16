@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { assertPermissionOrFail } from '@/lib/permissions'
+import { assertModuleOrFail } from '@/lib/modules-server'
 import { prisma } from '@/lib/prisma'
 import { activeClientSlug } from '@/lib/tenant'
 
@@ -155,6 +156,8 @@ function toData(d: z.infer<typeof PromoSchema>) {
 export async function createPromoBar(_prev: PromoActionResult, fd: FormData): Promise<PromoActionResult> {
   const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('promobar')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const parsed = parseForm(fd)
   if (!parsed.success) {
     return { ok: false, message: 'Błędy walidacji: ' + parsed.error.issues.map((i) => i.path.join('.')).join(', ') }
@@ -172,6 +175,8 @@ export async function createPromoBar(_prev: PromoActionResult, fd: FormData): Pr
 export async function updatePromoBar(id: string, _prev: PromoActionResult, fd: FormData): Promise<PromoActionResult> {
   const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('promobar')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const parsed = parseForm(fd)
   if (!parsed.success) {
     return { ok: false, message: 'Błędy walidacji: ' + parsed.error.issues.map((i) => i.path.join('.')).join(', ') }
@@ -186,6 +191,8 @@ export async function updatePromoBar(id: string, _prev: PromoActionResult, fd: F
 export async function togglePromoBar(id: string, enabled: boolean): Promise<PromoActionResult> {
   const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('promobar')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const cid = await clientId()
   if (!cid) return { ok: false, message: 'Brak klienta' }
   await prisma.promo_bars.updateMany({
@@ -199,6 +206,8 @@ export async function togglePromoBar(id: string, enabled: boolean): Promise<Prom
 export async function deletePromoBar(id: string): Promise<PromoActionResult> {
   const guard = await assertPermissionOrFail('promobar.manage')
   if (!guard.ok) return { ok: false, message: guard.message }
+  const mod = await assertModuleOrFail('promobar')
+  if (!mod.ok) return { ok: false, message: mod.message }
   const cid = await clientId()
   if (!cid) return { ok: false, message: 'Brak klienta' }
   await prisma.promo_bars.deleteMany({ where: { id, client_id: cid } })

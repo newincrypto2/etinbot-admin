@@ -1,6 +1,7 @@
 import { PackagePlus } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { listReshipRequests, type ReshipRow } from '@/queries/reship'
 
@@ -36,6 +37,7 @@ function OrderCell({ row }: { row: ReshipRow }) {
 
 export default async function ReshipPage() {
   await requireAuth()
+  await requireModule('reship')
   const rows = await listReshipRequests()
 
   return (

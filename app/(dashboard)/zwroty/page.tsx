@@ -1,6 +1,7 @@
 import { ExternalLink, Undo2, Package } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { listAllegroReturns } from '@/queries/email'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { activeClientSlug } from '@/lib/tenant'
@@ -19,6 +20,7 @@ const RETURN_STATUS_LABEL: Record<string, string> = {
 
 export default async function ZwrotyPage() {
   await requireAuth()
+  await requireModule('returns_allegro')
   const returns = await listAllegroReturns({ clientSlug: (await activeClientSlug()), limit: 200 })
 
   return (

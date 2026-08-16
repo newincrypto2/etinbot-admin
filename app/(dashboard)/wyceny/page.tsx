@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Calculator, Settings2, AlertTriangle } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { channelLabel, fmtMarginPct, fmtZl, statusMeta, QUOTE_STATUSES } from '@/lib/quotes'
 import { listQuotes } from '@/queries/quotes'
@@ -22,6 +23,7 @@ type SearchParams = Promise<{ status?: string }>
 
 export default async function WycenyPage(props: { searchParams: SearchParams }) {
   await requireAuth()
+  await requireModule('quotes')
   const params = await props.searchParams
   const status = params.status && QUOTE_STATUSES.includes(params.status as (typeof QUOTE_STATUSES)[number])
     ? params.status

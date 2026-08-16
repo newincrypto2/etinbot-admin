@@ -6,6 +6,14 @@ import { assertPermissionOrFail } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { coerceObj } from '@/queries/clients'
 import { saveEscalationConfigPatch } from '@/lib/escalation-config'
+import {
+  MODULES,
+  isModuleId,
+  resolveModules,
+  matchPlan,
+  CUSTOM_PLAN_ID,
+  type ModuleOverrides,
+} from '@/lib/modules'
 
 export type ActionResult = { ok: boolean; message: string }
 
@@ -294,4 +302,50 @@ export async function allegroDevicePoll(slug: string, deviceCode: string): Promi
     return { ok: true, status: 'connected', message: 'Połączono z Allegro.' }
   }
   return { ok: true, status: 'pending', message: 'Jeszcze nie potwierdzono — kliknij „Sprawdź" po autoryzacji.' }
+}
+
+// ─── Moduły (config.modules + clients.plan) ──────────────────────────────────
+// Karta klienta zapisuje ZAWSZE pełen zestaw override'ów nie-core (stan jawny —
+// nie zależy od późniejszych zmian definicji pakietów w lib/modules.ts).
+// clients.plan to tylko etykieta: dopasowujemy zapisany stan do MODULE_PLANS,
+// brak dopasowania = 'custom'.
+
+export async function saveClientModules(
+  slug: string,
+  vertical: string | null,
+  moduleState: Record<string, boolean>,
+): Promise<ActionResult> {
+  const guard = await assertPermissionOrFail('clients.manage')
+  if (!guard.ok) return { ok: false, message: guard.message }
+
+  const client = await prisma.clients.findUnique({ where: { slug }, select: { id: true } })
+  if (!client) return { ok: false, message: `Nie znaleziono klienta ${slug}.` }
+
+  // Walidacja wejścia: tylko znane, nie-core moduły z wartością boolean.
+  const overrides: ModuleOverrides = {}
+  for (const m of MODULES) {
+    if (m.core) continue
+    const v = moduleState[m.id]
+    if (typeof v !== 'boolean') {
+      return { ok: false, message: `Brak stanu dla modułu „${m.label}".` }
+    }
+    if (!isModuleId(m.id)) continue
+    overrides[m.id] = v
+  }
+
+  const r = await callBackend('/api/admin/set-config', {
+    slug,
+    key: 'modules',
+    value_json: JSON.stringify(overrides),
+  })
+  if (!r.ok) return { ok: false, message: `Nie udało się zapisać modułów (${r.status}). ${r.text.slice(0, 140)}` }
+
+  const effective = resolveModules(vertical, overrides)
+  const matched = matchPlan(effective)
+  const plan = matched ? matched.id : CUSTOM_PLAN_ID
+  await prisma.clients.update({ where: { slug }, data: { plan } })
+
+  revalidatePath(`/clients/${slug}`)
+  revalidatePath('/')
+  return { ok: true, message: 'Zapisano moduły.' }
 }

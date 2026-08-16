@@ -128,3 +128,15 @@
     @apply font-sans;
   }
 }
+
+/* ── Tokeny brandowe EtinBOT (redesign panelu wg makiety, 08.2026) ────────
+   Osobne od zmiennych shadcn powyżej — używane jako Tailwind arbitrary
+   values (np. bg-[var(--brand-blue)]) w Sidebar/Header/TenantTile. Nie
+   podłączone do @theme/shadcn celowo: to kolory panelu (sidebar/akcent),
+   nie repaint całego motywu jasny/ciemny. */
+:root {
+  --brand-blue: #2E7CF0;
+  --brand-navy: #24306E;
+  --brand-ink: #0E1630;
+  --brand-ink-raised: #16203F;
+}

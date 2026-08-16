@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { fmtFullDateTime, fmtDateTime } from '@/lib/datetime'
 import { channelLabel, fmtMarginPct, fmtZl, statusMeta } from '@/lib/quotes'
 import { getQuote, listCostItems } from '@/queries/quotes'
@@ -21,6 +22,7 @@ import { LinesEditor } from './_components/LinesEditor'
 
 export default async function WycenaPage(props: { params: Promise<{ id: string }> }) {
   await requireAuth()
+  await requireModule('quotes')
   const { id } = await props.params
 
   const detail = await getQuote(id)

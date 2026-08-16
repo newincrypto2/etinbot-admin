@@ -7,6 +7,11 @@ import { toast } from 'sonner'
 
 import { setActiveTenant } from '@/actions/tenant'
 
+// UWAGA (redesign panelu, 08.2026): ten selektor już nie jest renderowany w
+// Headerze — zastąpiła go zakładka tenanta w sidebarze
+// (components/layout/TenantTile.tsx), stylowana wg makiety Panel EtinBOT 2.0
+// i osadzona pod logo. Plik zostaje w repo (nie kasujemy plików klienta) jako
+// punkt odniesienia/rollback, gdyby TenantTile wymagał wycofania.
 /** Selektor tenanta w Headerze — widoczny tylko dla SUPERADMIN bez przypisanego klienta. */
 export function TenantSelector({
   tenants,

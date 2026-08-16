@@ -6,6 +6,7 @@ import { fmtDateTime } from '@/lib/datetime'
 import { ComposeButton } from './_components/ComposeButton'
 import { FilteredMailRow } from './_components/FilteredMailRow'
 import { activeClientSlug } from '@/lib/tenant'
+import { requireModule } from '@/lib/modules-server'
 
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -23,6 +24,7 @@ const DRAFT_LABEL: Record<string, { label: string; color: string }> = {
 type SearchParams = Promise<{ view?: string; q?: string; page?: string }>
 
 export default async function PocztaPage(props: { searchParams: SearchParams }) {
+  await requireModule('mail')
   const params = await props.searchParams
   const view = params.view ?? 'inbox'
   const q = params.q ?? ''

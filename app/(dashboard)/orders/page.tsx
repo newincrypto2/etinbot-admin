@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireModule } from '@/lib/modules-server'
 import { prisma } from '@/lib/prisma'
 import { fmtFullDateTime } from '@/lib/datetime'
 import { SyncButton } from '@/components/SyncButton'
@@ -13,6 +14,7 @@ type SearchParams = Promise<{ q?: string; page?: string }>
 
 export default async function OrdersPage(props: { searchParams: SearchParams }) {
   await requireAuth()
+  await requireModule('orders')
   const params = await props.searchParams
   const q = (params.q ?? '').trim()
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)

@@ -16,6 +16,7 @@ import { SandboxChat } from './_components/SandboxChat'
 import { VoicePromptCard } from './_components/VoicePromptCard'
 import { ConfigViewer } from './_components/ConfigViewer'
 import { ConfigForms } from './_components/ConfigForms'
+import { ModulesEditor } from './_components/ModulesEditor'
 import { AllegroConnect } from './_components/AllegroConnect'
 import { SwitchAndSettingsLink } from './_components/SwitchAndSettingsLink'
 import { IdoBookingCreds } from './_components/IdoBookingCreds'
@@ -28,6 +29,7 @@ type Search = Promise<{ tab?: string }>
 const TABS = [
   { key: 'overview', label: 'Przegląd' },
   { key: 'integrations', label: 'Integracje' },
+  { key: 'modules', label: 'Moduły' },
   { key: 'prompt', label: 'Prompt & sandbox' },
   { key: 'users', label: 'Użytkownicy' },
   { key: 'config', label: 'Konfiguracja' },
@@ -205,6 +207,20 @@ export default async function ClientCardPage(props: { params: Params; searchPara
             <SwitchAndSettingsLink slug={slug} />
           </div>
         </div>
+      )}
+
+      {/* ── MODUŁY ── */}
+      {tab === 'modules' && (
+        <ModulesEditor
+          slug={slug}
+          vertical={client.vertical}
+          initialOverrides={client.moduleOverrides}
+          integrations={{
+            woocommerce: client.channels.woocommerce,
+            baselinker: client.channels.baselinker,
+            allegro: client.channels.allegro,
+          }}
+        />
       )}
 
       {/* ── PROMPT & SANDBOX ── */}
