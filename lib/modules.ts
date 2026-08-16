@@ -182,10 +182,24 @@ export function parseModuleOverrides(raw: unknown): ModuleOverrides {
   return out
 }
 
-/** Wyciąga override'y modułów z całego clients.config. */
+/** Wyciąga override'y modułów z całego clients.config.
+ *
+ * UWAGA: config z Prismy (adapter-pg) potrafi przyjść jako STRING z JSON-em,
+ * nie obiekt — dokładnie dlatego queries/clients.ts ma coerceObj(). Bez
+ * parsowania stringa helper po cichu zwracał {} i moduły spadały na domyślki
+ * verticala (bug złapany na prod 16.08.2026: etin-produkty widział pełne
+ * menu e-commerce mimo poprawnego config.modules w bazie). */
 export function moduleOverridesFromConfig(config: unknown): ModuleOverrides {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return {}
-  return parseModuleOverrides((config as Record<string, unknown>).modules)
+  let cfg: unknown = config
+  if (typeof cfg === 'string') {
+    try {
+      cfg = JSON.parse(cfg)
+    } catch {
+      return {}
+    }
+  }
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return {}
+  return parseModuleOverrides((cfg as Record<string, unknown>).modules)
 }
 
 /**
