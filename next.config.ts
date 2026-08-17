@@ -6,8 +6,13 @@ const nextConfig: NextConfig = {
     serverActions: {
       // Lista hostów Coolify, z których panel akceptuje server actions.
       // Lokalnie localhost wystarcza; produkcyjnie dodajemy subdomenę.
+      // Uwaga: next.config jest ewaluowany w BUILDZIE, a env z Coolify są
+      // runtime'owe — dlatego domeny produkcyjne są wypisane wprost, a nie
+      // wyłącznie z NEXTAUTH_URL.
       allowedOrigins: [
         'localhost:3000',
+        'panel.etinbot.pl',
+        'etinbotadmin.dewflow.cloud',
         process.env.NEXTAUTH_URL?.replace(/^https?:\/\//, '') ?? '',
       ].filter(Boolean),
       // Załączniki maili idą przez server action (uploadAttachment). Domyślny

@@ -4,7 +4,27 @@ import { NextResponse } from 'next/server'
 
 const { auth } = NextAuth(authConfig)
 
+// Kanoniczna domena panelu (od 17.08.2026). Stara domena Coolify zostaje
+// podpięta do aplikacji i robi trwałe przekierowanie — dzięki temu nie umierają
+// linki w mailach/SMS-ach eskalacyjnych ani zakładki w przeglądarkach.
+const CANONICAL_HOST = 'panel.etinbot.pl'
+const LEGACY_HOSTS = new Set(['etinbotadmin.dewflow.cloud'])
+
 export default auth((req) => {
+  // Przekierowanie ze starej domeny — PRZED logiką sesji, żeby łapało też
+  // /api/auth i /login (cookies są host-only, więc sesja i tak jest per domena).
+  const host = (req.headers.get('host') ?? '').split(':')[0].toLowerCase()
+  if (LEGACY_HOSTS.has(host)) {
+    const target = new URL(
+      req.nextUrl.pathname + req.nextUrl.search,
+      `https://${CANONICAL_HOST}`,
+    )
+    // 301 dla nawigacji (zakładki, linki, SEO). Dla POST/PUT 308 — 301 kazałby
+    // przeglądarce zamienić metodę na GET i po cichu zgubić body formularza.
+    const status = req.method === 'GET' || req.method === 'HEAD' ? 301 : 308
+    return NextResponse.redirect(target, status)
+  }
+
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
 
